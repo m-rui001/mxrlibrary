@@ -1,0 +1,202 @@
+\documentclass{beamer}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% 主题设置
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% 标题信息
+\title[PINN 简介]{PINN（物理信息神经网络）简介}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{核心思想}
+PINN 的核心是将物理定律（以偏微分方程 PDE 形式）嵌入神经网络训练，通过数据与物理约束的双重引导，实现 PDE 的数据驱动求解或方程发现。
+\end{frame}
+
+\section{问题定义与前置准备}
+
+\begin{frame}{明确问题类型}
+PINN 主要解决两类核心问题：
+\begin{itemize}
+    \item \textbf{数据驱动求解 PDE（正问题）}：已知 PDE 形式及参数，利用少量观测数据（如初始/边界条件）推断整个时空域的隐藏解 $u(t,x)$。
+    \item \textbf{数据驱动发现 PDE（反问题）}：仅已知 PDE 通用结构（如非线性算子形式），通过观测数据反推 PDE 的未知参数 $\lambda$。
+    \item 类似的思想也可以用来逼近非线性算子（deepONet）。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{物理约束形式化}
+将物理定律转化为数学表达式，核心是 PDE 方程及边界/初始条件：
+\begin{itemize}
+    \item 通用 PDE 形式：时域相关问题通常表示为 
+    \[
+    u_t + \mathcal{N}[u;\lambda] = 0
+    \]
+    （$\mathcal{N}$ 为非线性算子，$\lambda$ 为参数，$u_t$ 为时间偏导）；稳态问题不含时间项，直接为 $\mathcal{N}[u;\lambda] = 0$。
+    
+    \item 边界/初始条件： Dirichlet 条件（$u|_{\partial\Omega} = g$）、Neumann 条件（$\nabla u \cdot n|_{\partial\Omega} = h$）、周期性条件等。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{数据准备}
+数据需求远低于传统深度学习，核心包括两类数据：
+\begin{itemize}
+    \item \textbf{监督点数据}：初始/边界数据（如 $u(0,x)$、$u(t,\partial\Omega)$）或稀疏时空观测点，可含少量噪声（PINN 对噪声有鲁棒性），数量通常为数百至数千个。这是因为 PDE 通常有无数个解，完全没有监督数据时 PINN 可能会收敛到随机某个解。因此 PINN 可以看作一种半监督学习。
+    
+    \item \textbf{配点数据（Collocation Points）}：用于强制 PDE 约束的辅助点，随机分布于整个定义域内，数量通常为数千至数万个。神经网络容易逼近光滑性强的函数，因此需覆盖 PDE 作用的关键区（如激波、涡旋等强非线性区域）。可以使用 RAR(residual based adaptive refinement)方法，根据训练结果动态决定配点位置。
+		\item 如果监督点过少，无论如何增加配点都不能使神经网络收敛。
+\end{itemize}
+\end{frame}
+
+\section{PINN 模型构建}
+
+\begin{frame}{神经网络架构设计}
+选用适用于函数逼近的网络结构，核心要求是支持自动微分（AD）计算高阶偏导：
+\begin{itemize}
+    \item \textbf{基础架构}：多层感知机（MLP）为默认选择，残差网络（ResNet）可用于深层模型缓解梯度消失，输入为时空坐标 $(t,x)$ 或空间坐标 $x$，输出为 PDE 解 $u$。
+    
+    \item \textbf{关键参数}：隐藏层数量通常为 4–9 层，神经元数量为 20–100 个/层；激活函数优先选择 tanh（平滑性好，利于高阶微分计算。然而 tanh 导数值域在 $(0,1]$，在深层神经网络中会导致反向传播的梯度消失）。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{计算残差}
+\begin{itemize}
+    \item 步骤 1：用神经网络正向传播得到预测解 $u(t,x;\theta)$（$\theta$ 为网络权重/偏置）。
+    \item 步骤 2：通过 AD 计算 PDE 所需的各阶偏导（如 $u_t$、$u_x$、$u_{xx}$）。
+    \item 步骤 3：构造 PDE 残差 
+    把PDE方程非0项全部移到左边，得到残差函数
+    \[
+    f(t,x;\theta) = \text{PDE 左侧表达式}
+    \]
+    （如 Burgers 方程残差 $f = u_t + \lambda_1 u u_x - \lambda_2 u_{xx}$），理想状态下 $f = 0$。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{反向传播与梯度计算}
+PINN 的训练依赖于反向传播算法，通过自动微分（Automatic Differentiation, AD）高效计算高阶偏导数和损失梯度：
+\begin{itemize}
+    \item \textbf{前向传播}：输入时空坐标 $(t,x)$，神经网络输出预测解 $u(t,x;\theta)$。
+    
+    \item \textbf{自动微分}：利用 AD（如 PyTorch/TensorFlow 的 autograd）计算 PDE 所需的偏导（$u_t, u_x, u_{xx}$ 等），构建残差 $f(t,x;\theta)$。
+    
+    \item \textbf{反向传播}：将总损失 $\mathcal{L} = w_u MSE_u + w_f MSE_f + w_b MSE_b$ 对网络参数 $\theta$ 求导：
+    \[
+    \nabla_\theta \mathcal{L} = \frac{\partial \mathcal{L}}{\partial \theta}
+    \]
+    该梯度通过链式法则从输出层逐层回传，包含对残差 $f$ 的高阶梯度（因 $f$ 本身含 $u$ 的导数）。
+    
+\end{itemize}
+\end{frame}
+
+\begin{frame}{损失函数设计}
+损失函数是 PINN 融合数据与物理约束的核心，采用加权求和形式，确保网络同时拟合数据和满足物理定律。
+
+\textbf{损失项构成}：
+\begin{itemize}
+    \item 数据损失（$MSE_u$）：拟合观测数据的误差，计算网络预测值与真实观测值的均方误差：
+    \[
+    MSE_u = \frac{1}{N_u} \sum_{i=1}^{N_u} |u(t_i,x_i;\theta) - u_i|^2
+    \]
+    （$N_u$ 为观测数据量）。
+    
+    \item 物理损失（$MSE_f$）：强制 PDE 约束的误差，计算残差函数在配点上的均方误差：
+    \[
+    MSE_f = \frac{1}{N_f} \sum_{i=1}^{N_f} |f(t_i,x_i;\theta)|^2
+    \]
+    （$N_f$ 为配点数量）。
+    
+    \item 边界/初始条件损失（$MSE_b$）：单独拟合边界/初始数据的误差（若观测数据已包含，可并入 $MSE_u$），如周期性条件损失
+    \[
+    MSE_b = \frac{1}{N_b} \sum_{i=1}^{N_b} |u(t_i,-L;\theta) - u(t_i,L;\theta)|^2.
+    \]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{总损失与权重调整}
+\begin{itemize}
+    \item 总损失：
+    \[
+    \text{Total Loss} = w_u MSE_u + w_f MSE_f + w_b MSE_b
+    \]
+    （$w_u,w_f,w_b$ 为权重）。
+    
+    \item 权重设置原则：物理损失权重通常与数据损失权重设为 1:1；也可根据数据量灵活调整。
+\end{itemize}
+\end{frame}
+
+\section{训练优化流程}
+
+\begin{frame}{优化器选择与参数设置}
+\begin{itemize}
+    \item 组合优化策略：先使用 Adam 优化器训练，快速接近最优解区域，再切换至 L-BFGS 微调，平衡稳定性与精度。
+    \item 批量策略：数据量较大时可在每个iteration中取小批量数据进行训练，配点可随机重采样以提升泛化性。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{训练过程关键细节}
+\begin{itemize}
+    \item 初始配点生成：采用拉丁超立方抽样（LHS）确保配点均匀覆盖定义域，避免局部区域无约束。
+    
+    \item 自适应配点优化（RAR 方法）：训练中通过蒙特卡洛方法在求解域内的大量随机点计算残差，并把残差较大的点添加为新配点，重复训练直至平均残差低于阈值，可提升关键区域精度。
+    
+    \item 收敛判断：监测总损失及各分项损失的下降趋势，同时验证 PDE 残差是否趋近于 0，避免仅数据损失小而物理约束不满足或满足物理约束不满足初始条件的“伪收敛”。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{超参数调优}
+\begin{itemize}
+    \item 网络架构：解越复杂（如含激波），需更多隐藏层和神经元。
+    
+    \item 配点数量：配点需足够多以覆盖 PDE 约束，通常 $N_f$ 是观测数据量 $N_u$ 的 10–100 倍。
+\end{itemize}
+\end{frame}
+
+\section{模型验证与输出}
+
+\begin{frame}{精度验证}
+\begin{itemize}
+    \item 定量指标：计算预测解与精确解（或高分辨率数值解）的相对 $L_2$ 误差，理想状态下误差低于 $10^{-3}$。
+    
+    \item 定性分析：可视化预测结果，对比预测解和真实解的形状。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{输出结果}
+\begin{itemize}
+    \item 求解 PDE 场景：输出整个定义域的连续解 $u(t,x)$，可直接用于预测、可视化或后续数值分析。
+    
+    \item 发现 PDE 场景：输出反推的参数 $\lambda$，并重构完整 PDE 表达式，需验证重构方程与真实方程的参数误差（通常要求误差低于 1\%）。
+\end{itemize}
+\end{frame}
+
+\section{其它特殊场景处理}
+
+\begin{frame}{数据驱动求解 PDE}
+\begin{itemize}
+    \item 核心目标：推断解 $u(t,x)$，PDE 参数 $\lambda$ 已知。
+    
+    \item 特殊处理：配点需覆盖整个时空域，物理损失直接基于已知 PDE 构造；离散时间模型可采用 Runge-Kutta 时间步方案，通过多输出网络预测各阶段解，支持大时间步直接跳转。这是 PINN 方法的独特优势。在传统 RK 方法中，每个阶段都依赖前一个阶段的结果，计算量大且易受数值误差影响。而 PINN+RK 中可以构建一个多输出神经网络，\textbf{单次前向传播直接输出所有 $q$ 个中间阶段的解}，一次计算图构建就可求出多个导数值。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{数据驱动发现 PDE}
+\begin{itemize}
+    \item 核心目标：反推参数 $\lambda$，PDE 结构已知（如算子 $\mathcal{N}$ 形式）。
+    
+    \item 特殊处理：参数 $\lambda$ 作为网络可学习参数，与权重 $\theta$ 共同优化；需至少两组时间快照数据（离散时间模型）或稀疏时空数据（连续时间模型），通过残差最小化同时拟合数据和锁定参数。
+\end{itemize}
+\end{frame}
+
+\begin{frame}{结束}
+\centering
+\Large 谢谢！\\
+\end{frame}
+
+\end{document}

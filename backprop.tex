@@ -1,0 +1,555 @@
+\documentclass{beamer}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,positioning}
+
+% 必须加载 tcolorbox + theorems 库
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems}
+
+% 主题与颜色
+\usetheme{Madrid}
+\definecolor{myteal}{cmyk}{0.5,0,0.15,0}
+\usecolortheme[named=myteal]{structure}
+
+% 定理环境
+\newcounter{mytheorem}[section]
+\def\themytheorem{\thesection.\arabic{mytheorem}}
+
+\definecolor{my-yellow}{cmyk}{0,0.2,0.7,0}
+\definecolor{my-blue}{cmyk}{0.80,0.13,0.14,0.04}
+\definecolor{my-green}{cmyk}{0.4,0,0.4,0}
+
+\tcbset{
+  defstyle/.style={fonttitle=\bfseries\upshape, colback=my-yellow!5, colframe=my-yellow!80!black},
+  theostyle/.style={fonttitle=\bfseries\upshape, colback=my-blue!5, colframe=my-blue!80!black},
+  corstyle/.style={fonttitle=\bfseries\upshape, colback=my-green!5, colframe=my-green!80!black},
+  boxsep=2pt,      % 默认是 4pt，减小内边距
+  left=4pt,
+  right=4pt,
+  top=2pt,
+  bottom=2pt,
+  arc=3pt
+}
+
+\newtcbtheorem[use counter=mytheorem, number within=section]{defn}{定义}{defstyle}{def}
+\newtcbtheorem[use counter=mytheorem, number within=section]{theo}{性质}{theostyle}{theo}
+\newtcbtheorem[use counter=mytheorem, number within=section]{cor}{推论}{corstyle}{cor}
+\newtcbtheorem[use counter=mytheorem, number within=section]{algo}{算法}{theostyle}{algo}
+\newtcbtheorem[use counter=mytheorem, number within=section]{exmp}{例子}{defstyle}{exmp}
+
+\title[反向传播]{反向传播原理}
+\institute{上海师范大学数理学院}
+\date{\today}
+
+\begin{document}
+\frame{\titlepage}
+
+\begin{frame}{目录}
+\tableofcontents
+\end{frame}
+
+\section{引言}
+\begin{frame}{反向传播概述}
+\begin{tcolorbox}[theostyle, title=核心思想]
+反向传播是一种高效计算神经网络中误差函数梯度的方法。它通过局部消息传递机制，将信息从网络输出端向后传递，从而高效地计算梯度。
+\end{tcolorbox}
+
+\vspace{1em}
+
+\begin{itemize}
+\item \textbf{历史背景}：传统上，反向传播方程需要手工推导并实现，耗时且易出错
+\item \textbf{现代方法}：现代深度学习框架使用自动微分技术，但理解基本原理仍然至关重要
+\item \textbf{广泛应用}：该方法也可用于计算其他重要导数，如雅可比矩阵和海森矩阵
+\end{itemize}
+\end{frame}
+
+\section{梯度的评估}
+\begin{frame}{梯度评估：基本设定}
+\begin{defn}{误差函数分解}{error-decomp}
+许多实际应用中的误差函数可以表示为训练集中每个数据点对应项的和：
+\[
+E(\mathbf{w}) = \sum_{n=1}^N E_n(\mathbf{w})
+\]
+其中，$E_n(\mathbf{w})$ 是单个数据点 $n$ 对应的误差项。这适用于随机梯度下降，或批量/小批量方法。
+\end{defn}
+
+\vspace{1em}
+
+\begin{tcolorbox}[defstyle, title=计算目标]
+我们的目标是高效计算 $\nabla E_n(\mathbf{w})$，即单个数据点对应的误差函数梯度。
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{单层网络}
+\begin{tcolorbox}[defstyle, title=线性模型]
+考虑简单线性模型，其中输出 $y_k$ 是输入变量 $x_i$ 的线性组合：
+\[
+y_k = \sum_i w_{ki}x_i
+\]
+结合平方和误差函数，在特定输入数据点 $n$ 上：
+\[
+E_n = \frac{1}{2}\sum_k (y_{nk} - t_{nk})^2
+\]
+其中 $y_{nk} = y_k(\mathbf{x}_n, \mathbf{w})$，$t_{nk}$ 是目标值。
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{单层网络梯度}
+\begin{theo}{单层网络梯度}{single-layer-grad}
+误差函数相对于权重 $w_{ji}$ 的梯度为：
+\[
+\frac{\partial E_n}{\partial w_{ji}} = (y_{nj} - t_{nj})x_{ni}
+\]
+这可以解释为"局部"计算，涉及连接 $w_{ji}$ 输出端的"误差信号" $y_{nj} - t_{nj}$ 和输入端的变量 $x_{ni}$ 的乘积。
+\end{theo}
+\end{frame}
+
+\begin{frame}{通用前馈网络}
+\begin{tcolorbox}[theostyle, title=网络结构]
+在通用前馈网络中，每个单元计算其输入的加权和：
+\[
+a_j = \sum_i w_{ji}z_i
+\]
+其中 $z_i$ 要么是另一个单元的激活值，要么是发送连接到单元 $j$ 的输入单元，$w_{ji}$ 是该连接对应的权重。偏置可以通过引入一个固定激活值为+1的额外单元来包含。
+\end{tcolorbox}
+
+\end{frame}
+\begin{frame}{通用前馈网络}
+\begin{tcolorbox}[theostyle, title=激活函数]
+加权和（也称为预激活）通过非线性激活函数 $h(\cdot)$ 转换，给出单元 $j$ 的激活值：
+\[
+z_j = h(a_j)
+\]
+\end{tcolorbox}
+
+\vspace{1em}
+
+\begin{tcolorbox}[theostyle, title=前向传播]
+对于训练集中的每个数据点，我们首先通过连续应用上述方程计算网络中所有隐藏和输出单元的激活值。这个过程称为前向传播。
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{反向传播推导}
+\begin{tcolorbox}[theostyle, title=链式法则]
+考虑计算 $E_n$ 相对于权重 $w_{ji}$ 的导数。$E_n$ 仅通过单元 $j$ 的加权和 $a_j$ 依赖于权重 $w_{ji}$。因此，可以应用偏导数的链式法则：
+\[
+\frac{\partial E_n}{\partial w_{ji}} = \frac{\partial E_n}{\partial a_j} \frac{\partial a_j}{\partial w_{ji}}
+\]
+\end{tcolorbox}
+
+\vspace{1em}
+
+\begin{defn}{$\delta$ 符号}{delta-def}
+引入有用的符号：
+\[
+\delta_j \equiv \frac{\partial E_n}{\partial a_j}
+\]
+其中 $\delta_j$ 通常被称为"误差"。
+\end{defn}
+\end{frame}
+\begin{frame}{基本梯度公式}
+\begin{theo}{基本梯度公式}{basic-grad-formula}
+结合上述定义，我们得到：
+\[
+\frac{\partial E_n}{\partial w_{ji}} = \delta_j z_i
+\]
+该公式表明，所需导数仅通过将连接输出端单元的 $\delta$ 值与连接输入端单元的 $z$ 值相乘即可获得。
+\end{theo}
+\end{frame}
+
+\begin{frame}{反向传播公式}
+\begin{tcolorbox}[theostyle, title=输出单元]
+对于输出单元，使用规范链接作为输出单元激活函数时：
+\[
+\delta_k = y_k - t_k
+\]
+\end{tcolorbox}
+
+\vspace{1em}
+
+\begin{tcolorbox}[theostyle, title=隐藏单元]
+对于隐藏单元，再次利用偏导数的链式法则：
+\[
+\delta_j \equiv \frac{\partial E_n}{\partial a_j} = \sum_k \frac{\partial E_n}{\partial a_k} \frac{\partial a_k}{\partial a_j}
+\]
+其中求和遍历所有单元 $k$，这些单元接收来自单元 $j$ 的连接。
+\end{tcolorbox}
+\end{frame}
+\begin{frame}{反向传播公式}
+\begin{theo}{反向传播公式}{backprop-formula}
+代入 $\delta_j$ 的定义并利用网络方程，我们得到反向传播公式：
+\[
+\delta_j = h'(a_j)\sum_k w_{kj}\delta_k
+\]
+这表明特定隐藏单元的 $\delta$ 值可以通过将 $\delta$ 值从网络中更高层的单元向后传播来获得。
+\end{theo}
+\end{frame}
+
+\begin{frame}{反向传播算法}
+\footnotesize
+\begin{algo}{标准反向传播算法}{backprop-algo}
+\textbf{输入}：输入向量 $\mathbf{x}_n$，网络参数 $\mathbf{w}$，误差函数 $E_n(\mathbf{w})$，激活函数 $h(a)$ \\
+\textbf{输出}：误差函数导数 $\{\partial E_n/\partial w_{ji}\}$
+
+\begin{enumerate}
+\item \textbf{前向传播}：
+  \begin{enumerate}
+  \item 对所有隐藏和输出单元 $j$：\\
+        $a_j \leftarrow \sum_i w_{ji}z_i$ \hfill // $\{z_i\}$ 包括输入 $\{x_i\}$ \\
+        $z_j \leftarrow h(a_j)$ \hfill // 激活函数
+  \end{enumerate}
+
+\item \textbf{误差评估}：
+  \begin{enumerate}
+  \item 对所有输出单元 $k$：\\
+        $\delta_k \leftarrow \partial E_n/\partial a_k$ \hfill // 计算误差
+  \end{enumerate}
+
+\item \textbf{反向传播}（逆序）：
+  \begin{enumerate}
+  \item 对所有隐藏单元 $j$：\\
+        $\delta_j \leftarrow h'(a_j)\sum_k w_{kj}\delta_k$ \hfill // 递归向后评估 \\
+        $\partial E_n/\partial w_{ji} \leftarrow \delta_j z_i$ \hfill // 评估导数
+  \end{enumerate}
+
+\item \textbf{返回} $\{\partial E_n/\partial w_{ji}\}$
+\end{enumerate}
+\end{algo}
+\end{frame}
+
+\begin{frame}{示例计算}
+\begin{tcolorbox}[theostyle, title=计算步骤 - 第1部分]
+\begin{enumerate}
+\item \textbf{前向传播}：
+  \begin{align*}
+  a_j &= \sum_{i=0}^D w^{(1)}_{ji}x_i \\
+  z_j &= \tanh(a_j) \\
+  y_k &= \sum_{j=0}^M w^{(2)}_{kj}z_j
+  \end{align*}
+  
+\item \textbf{输出单元误差}：
+  \[
+  \delta_k = y_k - t_k
+  \]
+\end{enumerate}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{示例计算}
+\begin{tcolorbox}[theostyle, title=计算步骤 - 第2部分]
+\begin{enumerate}
+\setcounter{enumi}{2} % 继续之前的计数
+\item \textbf{隐藏单元误差}：
+  \[
+  \delta_j = (1 - z_j^2)\sum_{k=1}^K w^{(2)}_{kj}\delta_k
+  \]
+
+\item \textbf{权重导数}：
+  \begin{align*}
+  \frac{\partial E_n}{\partial w^{(1)}_{ji}} &= \delta_j x_i \\
+  \frac{\partial E_n}{\partial w^{(2)}_{kj}} &= \delta_k z_j
+  \end{align*}
+\end{enumerate}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{数值微分}
+\begin{tcolorbox}[defstyle, title=有限差分法]
+反向传播的一个替代方法是使用有限差分近似导数：
+\[
+\frac{\partial E_n}{\partial w_{ji}} = \frac{E_n(w_{ji} + \varepsilon) - E_n(w_{ji})}{\varepsilon} + \mathcal{O}(\varepsilon)
+\]
+更精确的中心差分形式为：
+\[
+\frac{\partial E_n}{\partial w_{ji}} = \frac{E_n(w_{ji} + \varepsilon) - E_n(w_{ji} - \varepsilon)}{2\varepsilon} + \mathcal{O}(\varepsilon^2)
+\]
+\end{tcolorbox}
+\end{frame}
+\begin{frame}{数值微分的计算复杂度}
+\vspace{1em}
+
+\begin{theo}{计算复杂度比较}{complexity-comparison}
+\begin{itemize}
+\item \textbf{反向传播}：单次前向传播需要 $\mathcal{O}(W)$ 次操作，其中 $W$ 是网络中权重和偏置的总数。反向传播也只需要 $\mathcal{O}(W)$ 次额外操作。
+\item \textbf{数值微分}：每个权重需要单独扰动，每个扰动需要一次前向传播，因此总计算成本为 $\mathcal{O}(W^2)$。
+\end{itemize}
+\end{theo}
+
+\vspace{1em}
+
+\begin{tcolorbox}[corstyle, title=实用价值]
+尽管数值微分计算效率低下，但它在实践中很有用，因为将反向传播实现的导数与中心差分得到的导数进行比较，可以有效地验证软件的正确性。
+\end{tcolorbox}
+\end{frame}
+
+\section{雅可比矩阵}
+\begin{frame}{雅可比矩阵}
+\begin{defn}{雅可比矩阵定义}{jacobian-def}
+雅可比矩阵的元素由网络输出相对于输入的导数给出：
+\[
+J_{ki} \equiv \frac{\partial y_k}{\partial x_i}
+\]
+其中每个导数在保持所有其他输入固定的情况下进行评估。
+\end{defn}
+\end{frame}
+
+\begin{frame}{雅可比矩阵}
+\begin{tcolorbox}[theostyle, title=应用领域]
+\begin{itemize}
+\item 在由多个独立模块构建的系统中，雅可比矩阵可用于反向传播误差信号
+\item 提供输出对输入变量变化的局部敏感性度量
+\item 允许将已知的输入误差 $\Delta x_i$ 传播通过训练好的网络，估计它们对输出误差 $\Delta y_k$ 的贡献：
+\[
+\Delta y_k \approx \sum_i \frac{\partial y_k}{\partial x_i}\Delta x_i
+\]
+（假设 $\|\Delta x_i\|$ 很小）
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{雅可比矩阵计算}
+\begin{tcolorbox}[theostyle, title=反向传播方法]
+雅可比矩阵可以通过类似之前推导的反向传播过程进行评估。我们以以下形式编写元素 $J_{ki}$：
+\[
+J_{ki} = \frac{\partial y_k}{\partial x_i} = \sum_j \frac{\partial y_k}{\partial a_j}\frac{\partial a_j}{\partial x_i} = \sum_j w_{ji}\frac{\partial y_k}{\partial a_j}
+\]
+其中，求和遍历所有输入单元 $i$ 发送连接的单元 $j$。
+\end{tcolorbox}
+
+\end{frame}
+\begin{frame}{雅可比矩阵反向传播}
+\begin{theo}{雅可比反向传播公式}{jacobian-backprop}
+导数 $\partial y_k/\partial a_j$ 的递归反向传播公式为：
+\[
+\frac{\partial y_k}{\partial a_j} = h'(a_j)\sum_l w_{lj}\frac{\partial y_k}{\partial a_l}
+\]
+其中，求和遍历所有单元 $l$，这些单元接收来自单元 $j$ 的连接。
+\end{theo}
+
+\begin{tcolorbox}[theostyle, title=输出单元初始化]
+\begin{itemize}
+\item \textbf{线性输出单元}：$\frac{\partial y_k}{\partial a_l} = \delta_{kl}$
+\item \textbf{Logistic sigmoid 输出}：$\frac{\partial y_k}{\partial a_l} = \delta_{kl}\sigma'(a_l)$
+\item \textbf{Softmax 输出}：$\frac{\partial y_k}{\partial a_l} = \delta_{kl}y_k - y_ky_l$
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\section{海森矩阵}
+\begin{frame}{海森矩阵}
+\begin{defn}{海森矩阵定义}{hessian-def}
+将所有权重和偏置参数视为单个向量 $\mathbf{w}$ 的元素，二阶导数形成海森矩阵 $\mathbf{H}$ 的元素：
+\[
+H_{ij} = \frac{\partial^2 E}{\partial w_i \partial w_j}
+\]
+其中 $i,j \in \{1,\ldots,W\}$，$W$ 是权重和偏置的总数。
+\end{defn}
+
+\vspace{1em}
+
+\begin{tcolorbox}[theostyle, title=应用领域]
+\begin{itemize}
+\item 用于基于误差曲面二阶特性的非线性优化算法
+\item 在神经网络的贝叶斯处理中发挥作用
+\item 用于减少大型语言模型中权重的精度以减少内存占用
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{海森矩阵计算}
+\begin{theo}{计算复杂度}{hessian-complexity}
+\begin{itemize}
+\item 海森矩阵维度为 $W \times W$，直接评估需要 $\mathcal{O}(W^2)$ 次计算
+\item 反向传播扩展允许以 $\mathcal{O}(W^2)$ 的缩放效率评估海森矩阵
+\item 有时我们只需要海森矩阵与某个向量 $\mathbf{v}$ 的乘积 $\mathbf{v}^T\mathbf{H}$，这可以通过反向传播扩展在 $\mathcal{O}(W)$ 步骤内高效计算
+\end{itemize}
+\end{theo}
+\end{frame}
+
+\begin{frame}{海森矩阵近似}
+\begin{tcolorbox}[theostyle, title=对角近似]
+一种近似方法是仅评估海森矩阵的对角元素，隐式地将非对角元素设置为零：
+\begin{itemize}
+\item 需要 $\mathcal{O}(W)$ 存储空间
+\item 允许在 $\mathcal{O}(W)$ 步骤内评估逆矩阵
+\item 但仍然需要 $\mathcal{O}(W^2)$ 计算
+\item 实际上，海森矩阵通常具有显著的非对角项，因此需要谨慎使用此近似
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}[t]{海森矩阵近似}
+\vspace*{-1.5em}
+\begin{tcolorbox}[theostyle, title=外积近似]
+对于使用平方和误差函数的回归应用：
+\[
+E = \frac{1}{2}\sum_{n=1}^N (y_n - t_n)^2
+\]
+海森矩阵可以写为：
+\[
+\mathbf{H} = \nabla\nabla E = \sum_{n=1}^N \nabla y_n (\nabla y_n)^T + \sum_{n=1}^N (y_n - t_n)\nabla\nabla y_n
+\]
+如果网络经过适当训练，$y_n$ 接近 $t_n$，则第二项可以忽略，得到外积近似：
+\[
+\mathbf{H} \approx \sum_{n=1}^N \nabla a_n (\nabla a_n)^T
+\]
+\end{tcolorbox}
+\end{frame}
+
+\section{自动微分}
+\begin{frame}{自动微分概述}
+\begin{tcolorbox}[theostyle, title=梯度评估方法]
+评估神经网络误差函数梯度的四种主要方法：
+\begin{enumerate}
+\item \textbf{手工推导反向传播}：高效但耗时且易出错
+\item \textbf{数值微分}：实现简单但计算精度有限且扩展性差
+\item \textbf{符号微分}：避免人为错误，但表达式可能指数级增长（表达式膨胀）
+\item \textbf{自动微分}：现代深度学习的核心，自动生成梯度计算代码
+\end{enumerate}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{自动微分概述}
+\begin{theo}{自动微分优势}{autodiff-advantages}
+\begin{itemize}
+\item 机器精度准确
+\item 有效避免冗余计算
+\item 能处理控制流元素（分支、循环、递归、过程调用）
+\item 使深度学习的实验过程高效准确
+\end{itemize}
+\end{theo}
+\end{frame}
+
+\begin{frame}{前向模式自动微分}
+\begin{defn}{原始变量与切线变量}{primal-tangent}
+在前向模式自动微分中，我们为评估函数涉及的每个中间变量 $z_i$（称为"原始"变量）增加一个额外变量，表示该变量的某个导数值，记为 $\dot{z}_i$（称为"切线"变量）。
+\end{defn}
+\end{frame}
+\begin{frame}{前向模式自动微分}
+\begin{exmp}{计算示例}{forward-mode-example}
+考虑函数 $f(x_1, x_2) = x_1x_2 + \exp(x_1x_2) - \sin(x_2)$。定义原始变量：
+\begin{align*}
+v_1 &= x_1 \\
+v_2 &= x_2 \\
+v_3 &= v_1v_2 \\
+v_4 &= \sin(v_2) \\
+v_5 &= \exp(v_3) \\
+v_6 &= v_3 - v_4 \\
+v_7 &= v_5 + v_6
+\end{align*}
+\end{exmp}
+\end{frame}
+\begin{frame}{前向模式自动微分}
+\begin{tcolorbox}[theostyle, title=切线变量计算]
+为计算 $\partial f/\partial x_1$，定义切线变量 $v_i = \partial v_i/\partial x_1$：
+\begin{align*}
+\dot{v}_1 &= 1 \\
+\dot{v}_2 &= 0 \\
+\dot{v}_3 &= v_1\dot{v}_2 + \dot{v}_1v_2 \\
+\dot{v}_4 &= \dot{v}_2\cos(v_2) \\
+\dot{v}_5 &= \dot{v}_3\exp(v_3) \\
+\dot{v}_6 &= \dot{v}_3 - \dot{v}_4 \\
+\dot{v}_7 &= \dot{v}_5 + \dot{v}_6
+\end{align*}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{前向模式自动微分特性}
+\begin{theo}{雅可比矩阵计算}{jacobian-forward-mode}
+\begin{itemize}
+\item 对于具有 $D$ 个输入和 $K$ 个输出的函数，单次前向模式自动微分生成雅可比矩阵 $K \times D$ 的单列
+\item 要计算雅可比矩阵的第 $j$ 列，需要初始化 $\dot{x}_j = 1$ 且 $\dot{x}_i = 0$（$i \neq j$）
+\item 要计算完整雅可比矩阵，需要 $D$ 次前向模式计算
+\item 要计算雅可比矩阵与向量 $\mathbf{r} = (r_1,\ldots,r_D)^T$ 的乘积，只需单次前向传递，设置 $\dot{\mathbf{x}} = \mathbf{r}$
+\end{itemize}
+\end{theo}
+\end{frame}
+
+\begin{frame}{前向模式自动微分特性}
+\begin{tcolorbox}[corstyle, title=适用场景]
+前向模式自动微分在输入少、输出多（$K \gg D$）的网络中非常高效。然而，在深度学习中，我们通常只有一个函数（误差函数）和大量变量（权重和偏置，可能有数百万或数十亿），此时前向模式效率极低。
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{反向模式自动微分}
+\begin{defn}{伴随变量}{adjoint-vars}
+在反向模式自动微分中，我们为每个中间变量 $v_i$ 增加伴随变量 $\bar{v}_i$，对于单输出函数 $f$，定义为：
+\[
+\bar{v}_i = \frac{\partial f}{\partial v_i}
+\]
+\end{defn}
+
+\begin{tcolorbox}[theostyle, title=计算过程]
+伴随变量可以通过从输出开始向后工作，使用链式法则依次评估：
+\[
+\bar{v}_i = \frac{\partial f}{\partial v_i} = \sum_{j \in \text{ch}(i)} \frac{\partial f}{\partial v_j}\frac{\partial v_j}{\partial v_i} = \sum_{j \in \text{ch}(i)}\bar{v}_j\frac{\partial v_j}{\partial v_i}
+\]
+其中 $\text{ch}(i)$ 表示计算图中节点 $i$ 的子节点集合。
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{反向模式自动微分}
+\begin{exmp}{伴随变量计算}{adjoint-example}
+使用之前的函数示例，伴随变量计算如下：
+\begin{align*}
+\bar{v}_7 &= 1 \\
+\bar{v}_6 &= \bar{v}_7 \\
+\bar{v}_5 &= \bar{v}_7 \\
+\bar{v}_4 &= -\bar{v}_6 \\
+\bar{v}_3 &= \bar{v}_5\exp(v_3) + \bar{v}_6 \\
+\bar{v}_2 &= \bar{v}_3v_1 + \bar{v}_4\cos(v_2) \\
+\bar{v}_1 &= \bar{v}_3v_2
+\end{align*}
+注意：这些计算从输出开始，然后向后流向输入。
+\end{exmp}
+\end{frame}
+
+\begin{frame}{反向模式特性与比较}
+\begin{theo}{反向模式优势}{reverse-mode-advantages}
+\begin{itemize}
+\item 即使有多个输入，也只需单次反向传递即可评估所有导数
+\item 对于神经网络误差函数，权重和偏置的导数作为相应的伴随变量获得
+\item 对于具有多个输出的情况，每个输出变量需要单独的反向传递
+\item 通常比前向模式更占用内存，因为需要存储所有中间原始变量以供反向传递使用
+\end{itemize}
+\end{theo}
+\end{frame}
+\begin{frame}{计算成本}
+\begin{tcolorbox}[theostyle, title=计算成本]
+\begin{itemize}
+\item 无论是前向模式还是反向模式，单次网络传递的计算成本保证不超过单次函数评估成本的6倍
+\item 实践中，开销通常接近2到3倍
+\item 混合模式也值得关注，例如海森矩阵与向量的乘积计算可以在 $\mathcal{O}(W)$ 复杂度下完成，即使海森矩阵大小为 $W \times W$
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\section{总结}
+\begin{frame}{总结}
+\begin{tcolorbox}[theostyle, title=主要内容回顾]
+\begin{itemize}
+\item 详细推导了通用前馈网络的反向传播算法
+\item 证明了反向传播在计算效率上的优势（$\mathcal{O}(W)$ vs $\mathcal{O}(W^2)$）
+\item 展示了如何将反向传播扩展到雅可比矩阵和海森矩阵的计算
+\item 介绍了自动微分的概念，特别是前向模式和反向模式
+\item 揭示了反向模式自动微分与误差反向传播的密切关系
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\begin{frame}{总结}
+\begin{tcolorbox}[corstyle, title=现代意义]
+理解反向传播原理对现代深度学习仍然至关重要，尽管大多数框架隐藏了实现细节。这种理解使我们能够：
+\begin{itemize}
+\item 诊断和解决训练问题
+\item 设计新的网络架构和损失函数
+\item 开发更高效的优化算法
+\item 理解模型的数学基础
+\end{itemize}
+\end{tcolorbox}
+\end{frame}
+
+\end{document}
