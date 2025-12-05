@@ -1,0 +1,495 @@
+\documentclass{beamer}
+\usepackage{ctex}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usetheme{Madrid}
+\definecolor{myteal}{cmyk}{0.5,0,0.15,0}
+\definecolor{myyellow}{cmyk}{0,0.2,0.7,0}
+\definecolor{myblue}{cmyk}{0.80,0.13,0.14,0.04}
+\definecolor{mygreen}{cmyk}{0.4,0,0.4,0}
+
+\setbeamercolor{structure}{fg=mygreen}                     % 所有结构性元素（项目符号、链接等）
+\setbeamercolor{title}{fg=white, bg=mygreen}               % 主标题背景
+\setbeamercolor{frametitle}{fg=white, bg=mygreen!90!black} % 帧标题（稍深一点增加层次）
+\setbeamercolor{block title}{fg=white, bg=mygreen!80!black}% 定义/性质等 block 标题
+\setbeamercolor{block body}{bg=mygreen!5}                  % block 内容背景（极淡青绿）
+\setbeamercolor{itemize item}{fg=mygreen}                  % 项目符号颜色
+\title{正则化与归纳偏置}
+\institute{上海师范大学数理学院}
+\date{}
+\begin{document}
+\frame{\titlepage}
+\section{正则化基础}
+\begin{frame}{正则化基础}
+\begin{block}{正则化定义}
+正则化是深度学习中控制模型复杂度、防止过拟合的核心技术。通过向误差函数添加惩罚项，形成正则化的误差函数：
+\[
+\tilde{E}(\mathbf{w}) = E(\mathbf{w}) + \frac{\lambda}{2} \mathbf{w}^T\mathbf{w}
+\]
+其中：
+\begin{itemize}
+\item $\mathbf{w}$ 是模型参数向量
+\item $E(\mathbf{w})$ 是未正则化的误差函数
+\item $\lambda$ 是正则化超参数，控制正则化强度
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 通过减少解的方差（以增加一些偏差为代价）提高预测准确性
+\item 任意给定神经网络只能表示真实数据生成器的近似
+\item 最佳泛化通常通过较大网络结合正则化获得
+\item 多种正则化技术可以组合使用：早停、模型平均、Dropout、数据增强和参数共享等
+\end{itemize}
+\end{frame}
+
+\section{归纳偏置}
+
+\begin{frame}{模型复杂度与归纳偏置}
+\begin{block}{偏差-方差权衡}
+\begin{itemize}
+\item 中等复杂度的模型通常获得最小泛化误差
+\item 高偏差的简单模型无法捕捉数据生成过程中的变化
+\item 低偏差的高度灵活模型易过拟合，泛化性能差
+\item 随数据集增长，可使用更灵活模型（更少偏差）获得更好泛化
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 正则化系数$\lambda$的中间值通常对新输入给出最佳预测
+\item 模型选择也受内存使用、执行速度等因素影响
+\item 本讨论专注于实现良好预测性能这一核心目标
+\item 适当水平的偏差对于从有限数据集中进行泛化非常重要
+\end{itemize}
+\end{frame}
+
+\begin{frame}{逆问题与归纳偏置}
+\begin{block}{机器学习作为逆问题}
+\begin{itemize}
+\item 机器学习任务本质上是逆问题：从有限样本推断整个分布
+\item 无限多个分布可能生成观察到的训练数据
+\item 从无限可能性中选择特定分布需要归纳偏置
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 归纳偏置源于对问题背景的先验知识
+\item 常见偏置：输入微小变化应导致输出微小变化（平滑性）
+\item 权重正则化鼓励权重小幅度，引入对平滑函数的偏置
+\item 领域特定偏置：如图像中物体身份与位置无关（平移不变性）
+\item 迁移学习和多任务学习也从正则化角度理解，任务间相似性是更强的归纳偏置
+\end{itemize}
+\end{frame}
+
+\begin{frame}{没有免费午餐定理}
+\begin{block}{Wolpert (1996)定理}
+\begin{itemize}
+\item 在所有可能问题上取平均，每个学习算法与其他算法一样好
+\item 特定算法在某些问题上优于平均水平，必在其他问题上劣于平均水平
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 理论性限制：实际应用通常表现出平滑性（输入小变化→输出小变化）
+\item 神经网络等模型包含对平滑性的偏置，具有广泛适用性
+\item 归纳偏置的核心重要性：没有偏置，不可能"纯粹从数据中学习"
+\item 偏置可以是隐含的（如有限参数数量）或显式编码的
+\item 通用学习算法：适用于广泛实际应用的归纳偏置
+\item 基于模型的机器学习：使所有假设显式化，为归纳偏置做适当选择
+\end{itemize}
+\end{frame}
+
+\begin{frame}{对称性与不变性}
+\begin{block}{输入变换下的不变性}
+\begin{itemize}
+\item 预测应在输入变量某些变换下保持不变
+\item 例：图像物体分类中的平移不变性、尺度不变性
+\item 变换保持特定属性不变，代表对称性
+\item 对称变换集合形成群（group）数学结构
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 群公理：封闭性、结合律、单位元、逆元
+\item 例：90度倍数旋转、二维平面连续平移
+\item 从数据中学习不变性具有挑战性：变换导致数据显著变化
+\item 需要更有效方法鼓励模型展现所需不变性
+\end{itemize}
+\end{frame}
+
+\begin{frame}{对称性与不变性的实现}
+\begin{block}{四种实现不变性的方法}
+\begin{enumerate}
+\item \textbf{预处理}：计算不变特征，后续系统必然尊重这些不变性
+\item \textbf{正则化误差函数}：当输入受不变变换影响时，惩罚输出变化
+\item \textbf{数据增强}：扩展训练集，包含变换版本，相同目标输出
+\item \textbf{网络架构}：将不变性构建到网络结构中
+\end{enumerate}
+\end{block}
+
+\begin{itemize}
+\item 预处理挑战：设计不变特征但不丢失有用信息
+\item 正则化例：切线传播技术，仅适用于小变换
+\item 数据增强：易实现且高效，广泛用于图像分析（翻转、缩放、旋转、亮度变化等）
+\item 网络架构：最强大有效，如卷积神经网络
+\end{itemize}
+\end{frame}
+
+\begin{frame}{等变性}
+\begin{block}{等变性定义}
+\begin{itemize}
+\item 不变性的推广：输出以特定方式变换，而非保持不变
+\item 例：图像分割网络，物体平移→分割结果相应平移
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 平移等变性：$S(T(I)) = T(S(I))$
+\begin{itemize}
+\item $I$：图像，$S$：分割网络，$T$：平移操作
+\item 平移后图像的分割 = 原始图像分割的平移
+\end{itemize}
+\item 一般等变性：$S(T(I)) = \tilde{T}(S(I))$
+\begin{itemize}
+\item 输出与输入变换不同
+\item 例：分割图像分辨率较低时，$\tilde{T}$是低维空间中的平移
+\end{itemize}
+\item 不变性是等变性的特例：输出变换为单位变换
+\begin{itemize}
+\item 例：分类网络：$C(T(I)) = C(I)$
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{权重衰减}
+
+\begin{frame}{权重衰减的基本原理}
+\begin{block}{二次正则化}
+\begin{itemize}
+\item 最简单正则化器：参数平方和
+\item 有效模型复杂度由正则化系数$\lambda$决定
+\item 可解释为权重向量$\mathbf{w}$上零均值高斯先验分布的负对数
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 称为"权重衰减"：在顺序学习中，鼓励权重向零衰减
+\item 梯度计算简单：$\nabla\tilde{E}(\mathbf{w}) = \nabla E(\mathbf{w}) + \lambda\mathbf{w}$
+\item 一般效果：缩小权重参数幅度，尤其对不敏感参数
+\item 有效参数数量：正则化后保持活跃的参数数量
+\begin{itemize}
+\item $\lambda \to \infty$：所有参数为零，有效参数数量为零
+\item $\lambda = 0$：有效参数数量等于实际参数总数
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{一致性正则化器}
+\begin{block}{变换不变性要求}
+\begin{itemize}
+\item 简单权重衰减破坏网络映射的理想变换属性
+\item 例：两层MLP，输入/输出线性变换应保持映射不变
+\item 一致性要求：等效解决方案仅在权重线性变换上不同
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 一致性正则化器：$\frac{\lambda_1}{2} \sum_{w \in W_1} w^2 + \frac{\lambda_2}{2} \sum_{w \in W_2} w^2$
+\begin{itemize}
+\item $W_1, W_2$：各层权重集合
+\item 偏置不包括在求和中
+\item 权重重新缩放时保持不变
+\end{itemize}
+\item 对应先验分布：$p(\mathbf{w}|\alpha_1, \alpha_2) \propto \exp(-\frac{\alpha_1}{2} \sum_{w \in W_1} w^2 - \frac{\alpha_2}{2} \sum_{w \in W_2} w^2)$
+\item 一般形式：$\Omega(\mathbf{w}) = \frac{1}{2}\sum_k \alpha_k \|\mathbf{w}\|^2_k$，$\|\mathbf{w}\|^2_k = \sum_{j \in W_k} w_j^2$
+\end{itemize}
+\end{frame}
+
+\begin{frame}{广义权重衰减}
+\begin{block}{Lq正则化}
+\begin{itemize}
+\item 推广形式：$\Omega(\mathbf{w}) = \frac{\lambda}{2}\sum_{j=1}^M |w_j|^q$
+\item $q=2$：二次正则化器（L2正则化）
+\item $q=1$：lasso正则化器（Tibshirani, 1996）
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item L1正则化特点：
+\begin{itemize}
+\item 使一些系数$w_j$被驱动为零，导致稀疏模型
+\item 等价于在约束$\sum_{j=1}^M |w_j|^q \leq \eta$下最小化未正则化误差
+\end{itemize}
+\item 稀疏性起源：L1约束区域在坐标轴上有尖角，更可能与误差函数最小值相交
+\item 正则化允许在有限数据集上训练复杂模型
+\item 问题从找到适当参数数量转变为确定合适正则化系数$\lambda$
+\end{itemize}
+\end{frame}
+
+\section{学习曲线}
+
+\begin{frame}{早停}
+\begin{block}{训练过程中的泛化}
+\begin{itemize}
+\item 训练误差通常随迭代单调减少
+\item 验证误差先减少后增加（过拟合）
+\item 早停：在验证误差最小时停止训练
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 有效参数数量解释：
+\begin{itemize}
+\item 有效参数数量在训练过程中增长
+\item 限制训练迭代次数限制有效网络复杂度
+\end{itemize}
+\item 二次误差函数下，早停与权重衰减行为相似
+\begin{itemize}
+\item 量$\tau\eta$（$\tau$：迭代索引，$\eta$：学习率）类似$\lambda^{-1}$
+\end{itemize}
+\item 早停是控制模型复杂度的实用方法
+\end{itemize}
+\end{frame}
+
+\begin{frame}{双下降现象}
+\begin{block}{模型复杂度与泛化}
+\begin{itemize}
+\item 传统观点：参数过多导致过拟合，泛化性能下降
+\item 深度学习经验：更大模型通常表现更好
+\item 双下降现象（Belkin等，2019）：
+\begin{itemize}
+\item 测试误差先下降，后增加，再下降
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 两种模式：
+\begin{itemize}
+\item 中小型复杂度：经典偏差-方差权衡
+\item 非常大模型：测试误差在训练误差零后继续减少
+\end{itemize}
+\item 有效模型复杂度：模型达到零训练误差的最大训练数据集大小
+\item 早停和正则化也显示双下降行为
+\item 讽刺结果：增加训练数据可能降低性能（临界模式）
+\end{itemize}
+\end{frame}
+
+\section{参数共享}
+
+\begin{frame}{硬参数共享}
+\begin{block}{参数共享原理}
+\begin{itemize}
+\item 通过对权重施加硬约束，将权重分组
+\item 每组中所有权重共享相同值，共享值从数据中学习
+\item 自由度数量小于网络连接数量
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 作为将归纳偏置编码到网络中的方式
+\item 表达已知不变性（如平移不变性）
+\item 梯度评估可通过修改反向传播完成
+\item 卷积神经网络中大量使用参数共享
+\item 仅适用于可提前指定约束形式的问题
+\end{itemize}
+\end{frame}
+
+\begin{frame}{软权重共享}
+\begin{block}{高斯混合正则化}
+\begin{itemize}
+\item Nowlan和Hinton (1992)提出：软权重共享
+\item 不强制权重相等，鼓励组内权重值相似
+\item 权重分组、平均值和分布作为学习过程一部分确定
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 先验分布：$p(\mathbf{w}) = \prod_i \{\sum_{j=1}^K \pi_j \mathcal{N}(w_i|\mu_j, \sigma_j^2)\}$
+\item 正则化函数：$\Omega(\mathbf{w}) = -\sum_i \ln(\sum_{j=1}^K \pi_j \mathcal{N}(w_i|\mu_j, \sigma_j^2))$
+\item 后验概率：$\gamma_j(w_i) = \frac{\pi_j \mathcal{N}(w_i|\mu_j, \sigma_j^2)}{\sum_k \pi_k \mathcal{N}(w_i|\mu_k, \sigma_k^2)}$
+\item 权重导数：$\frac{\partial \tilde{E}}{\partial w_i} = \frac{\partial E}{\partial w_i} + \lambda \sum_j \gamma_j(w_i) \frac{(w_i - \mu_j)}{\sigma_j^2}$
+\item 其他参数（$\mu_j$, $\sigma_j^2$, $\pi_j$）也有相应更新规则
+\end{itemize}
+\end{frame}
+
+\section{残差连接}
+
+\begin{frame}{残差连接的动机}
+\begin{block}{深度网络训练挑战}
+\begin{itemize}
+\item 破碎梯度现象（Balduzzi等，2017）：
+\begin{itemize}
+\item 深度增加→线性区域数量指数增长
+\item 误差函数梯度不连续性增殖
+\item 早期层权重微小变化→梯度显著变化
+\end{itemize}
+\item 梯度优化算法假设梯度平滑变化
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 残差连接（He等，2015a）：特定形式的跳跃层连接
+\item 使训练非常深网络（数百层）成为可能
+\item 与批归一化结合，显著减少梯度消失/爆炸问题
+\end{itemize}
+\end{frame}
+
+\begin{frame}{残差连接实现}
+\begin{block}{残差块}
+\begin{itemize}
+\item 标准层：$\mathbf{z}_l = F_l(\mathbf{z}_{l-1})$
+\item 残差连接：$\mathbf{z}_l = F_l(\mathbf{z}_{l-1}) + \mathbf{z}_{l-1}$
+\item $F_l(\mathbf{z}_{l-1}) = \mathbf{z}_l - \mathbf{z}_{l-1}$：学习恒等映射与期望输出间的残差
+\item 残差块可轻松生成恒等变换
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 残差网络效果：
+\begin{itemize}
+\item 梯度对输入值敏感度小得多
+\item 创建更平滑的误差函数表面
+\end{itemize}
+\item 扩展形式：多个并行工作的子网络（不同深度）
+\item 维度变化：$\mathbf{z}_l = F_l(\mathbf{z}_{l-1}) + \mathbf{W}\mathbf{z}_{l-1}$
+\item 常见配置：跳跃连接起点$\rightarrow \mathbf{ReLU} \rightarrow \mathbf{W} \rightarrow$跳跃连接终点
+\end{itemize}
+\end{frame}
+
+
+\section{模型平均}
+
+\begin{frame}{模型平均基础}
+\begin{block}{committee方法}
+\begin{itemize}
+\item 多个模型预测平均：$p(y|\mathbf{x}) = \frac{1}{L} \sum_{l=1}^L p_l(y|\mathbf{x})$
+\item 通过偏差-方差权衡改进预测
+\item 需要在committee成员间引入可变性
+\end{itemize}
+\end{block}
+
+\begin{itemize}
+\item 自助聚合（Bagging）：
+\begin{itemize}
+\item 创建多个自助数据集：从原始数据集有放回抽样
+\item 每个数据集训练一个模型
+\item 不同架构的多个模型也可形成集成
+\end{itemize}
+\item 误差分析：
+\begin{itemize}
+\item committee误差：$E_{COM} = \mathbb{E}_{\mathbf{x}}[\{\frac{1}{M}\sum_{m=1}^M \epsilon_m(\mathbf{x})\}^2]$
+\item 不相关误差时：$E_{COM} = \frac{1}{M}E_{AV}$
+\item 现实中误差相关，但$E_{COM} \leq E_{AV}$始终成立
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Boosting：训练与预测}
+\begin{block}{训练过程}
+\begin{itemize}
+\item \textbf{顺序训练}：基分类器一个接一个训练
+\item \textbf{样本加权}：每轮增加前一轮错误分类样本的权重
+\item \textbf{分类器加权}：性能好的分类器获得更高投票权重
+\end{itemize}
+\end{block}
+
+\begin{block}{预测过程}
+\begin{itemize}
+\item \textbf{加权投票}：$H(\mathbf{x}) = \text{sign}\left(\sum_{t=1}^T \alpha_t h_t(\mathbf{x})\right)$
+\item 每个基分类器的投票权重$\alpha_t$与其准确率成正比
+\end{itemize}
+\end{block}
+
+\textbf{关键特性}：
+\begin{itemize}
+\item 弱分类器只需略优于随机猜测
+\item 与Bagging不同：训练是顺序的，非并行
+\item 适合处理难例样本，降低偏差
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Boosting vs Bagging 与实际应用}
+\begin{block}{Boosting与Bagging对比}
+\begin{table}
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{特性} & \textbf{Boosting} & \textbf{Bagging} \\
+\midrule
+训练方式 & 顺序 & 并行 \\
+样本权重 & 动态调整 & 均匀/固定 \\
+关注焦点 & 难例样本 & 减少方差 \\
+过拟合风险 & 较高 & 较低 \\
+基础模型 & 弱模型 & 任意模型 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{block}
+
+\textbf{计算代价考量}：
+\begin{itemize}
+\item 主要缺点：多个模型需分别训练，预测需评估所有模型
+\item 训练和推理计算成本显著增加
+\item 在资源受限场景，需权衡性能提升与计算开销
+\item Dropout提供了近似模型平均的低成本替代方案
+\end{itemize}
+\end{frame}
+\begin{frame}{Dropout：原理与训练机制}
+\begin{block}{核心思想}
+\begin{itemize}
+\item \textbf{训练阶段}：随机删除网络节点（包括连接）
+\item \textbf{每次迭代}：为每个样本生成新的随机掩码
+\item \textbf{实现}：二元掩码向量$\mathbf{R} \in \{0,1\}^n$，节点保留概率$\rho$
+\begin{itemize}
+\item 隐藏层：$\rho = 0.5$
+\item 输入层：$\rho = 0.8$
+\end{itemize}
+\item \textbf{不应用于}输出层
+\end{itemize}
+\end{block}
+
+\begin{block}{训练过程}
+\begin{itemize}
+\item 每个mini-batch生成新掩码
+\item 前向/反向传播仅在保留节点进行
+\item 梯度更新基于掩码网络
+\item 本质：训练指数级($2^M$)子网络的共享参数集合
+\end{itemize}
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Dropout：预测与理论解释}
+\begin{block}{预测方法}
+\begin{itemize}
+\item \textbf{蒙特卡洛方法}：
+\begin{itemize}
+\item 采样10-20个掩码
+\item 平均预测结果
+\end{itemize}
+\item \textbf{权重缩放}（标准做法）：
+\begin{itemize}
+\item 测试时使用完整网络
+\item 每层权重 $\times\,\rho$
+\item 保持期望激活值一致
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{block}{理论解释}
+\begin{itemize}
+\item \textbf{模型平均}：近似$2^M$个子网络的贝叶斯平均
+\item \textbf{正则化机制}：
+\begin{itemize}
+\item 防止节点过度专业化
+\item 减少共同适应(co-adaptation)
+\item 增强特征鲁棒性
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\end{frame}
+
+\end{document}
