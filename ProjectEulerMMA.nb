@@ -1,0 +1,313 @@
+(* Project Euler 第11题：网格中最大乘积 *)
+
+Max@Flatten@{Map[Max, Map[Times @@@ Partition[#, 4, 1] &, {data, Transpose[data], Diagonal[data, #] & /@ Range[-16, 16],Diagonal[Reverse /@ data, #] & /@ Range[-16, 16]}, {2}], {2}]}
+
+(* 语法解释：Map[Max, ...] 对每个方向的最大值求最大，Times @@@ Partition[#, 4, 1] 计算连续4个数的乘积，Flatten 展平结果 *)
+
+
+
+
+
+(* Project Euler 第14题：最长Collatz序列 *)
+
+collatzLength[1] := 1
+
+collatzLength[n_] := collatzLength[n] = If[EvenQ[n], 1 + collatzLength[n/2], 1 + collatzLength[3 n + 1]]
+
+MaximalBy[Table[{collatzLength[i], i}, {i, 1, 1*^6}], First]
+
+(* 语法解释：:= 定义函数，If[EvenQ[n], ...] 判断奇偶性，collatzLength[n] = 实现记忆化避免重复计算，MaximalBy 按第一个元素（长度）取最大值 *)
+
+
+
+
+
+(* Project Euler 第15题：网格路径 *)
+
+dp[0, _] = 1;
+
+dp[_, 0] = 1;
+
+dp[i_, j_] := dp[i, j] = dp[i, j - 1] + dp[i - 1, j]
+
+dp[20, 20]
+
+(* 语法解释：dp[0, _] = 1 定义边界条件，dp[i_, j_] := dp[i, j] = 实现记忆化递归，递推关系 dp[i,j] = dp[i,j-1] + dp[i-1,j] 表示从左边和上面来的路径数 *)
+
+
+
+
+
+(* Project Euler 第16题：2^1000的数字和 *)
+
+Total[IntegerDigits[2^1000]]
+
+(* 语法解释：2^1000 计算2的1000次方，IntegerDigits 将数字转换为各位数字列表，Total 对列表求和 *)
+
+
+
+
+
+(* Project Euler 第17题：数字字母计数 *)
+
+ans = 0;
+
+For[i = 1, i <= 1000, i++, k = IntegerName[i, "Words"];
+
+a = ToCharacterCode[k, "Unicode"]; a = DeleteCases[a, 8208];
+
+a = DeleteCases[a, 32];
+
+ans = ans + Length[a]]
+
+ans = ans + 9 * 99 * 3
+
+(* 语法解释：IntegerName[i, "Words"] 将数字转为英文单词，ToCharacterCode 转为Unicode码，DeleteCases 删除连字符和空格，For 循环遍历1到1000 *)
+
+
+
+
+
+(* Project Euler 第18题：最大路径和（版本1） *)
+
+m = "75
+
+95 64
+
+17 47 82
+
+18 35 87 10
+
+20 04 82 47 65
+
+19 01 23 75 03 34
+
+88 02 77 73 07 63 67
+
+99 65 04 28 06 16 70 92
+
+41 41 26 56 83 40 80 70 33
+
+41 48 72 33 47 32 37 16 94 29
+
+53 71 44 65 25 43 91 52 97 51 14
+
+70 11 33 28 77 73 17 78 39 68 17 57
+
+91 71 52 38 17 14 91 43 58 50 27 29 48
+
+63 66 04 68 89 53 67 30 73 16 69 87 40 31
+
+04 62 98 27 23 09 70 98 73 93 38 53 60 04 23";
+
+m = TakeList[ToExpression[StringSplit[m]], Range[15]];
+
+For[i = 14, i >= 1, i--,
+
+For[j = 1, j <= i, j++,
+
+m[[i, j]] = m[[i, j]] + Max[m[[i + 1, j]], m[[i + 1, j + 1]]]]];
+
+Print[m[[1, 1]]]
+
+(* 语法解释：StringSplit 分割字符串，ToExpression 转为数字，TakeList 按行分割，For 循环从底向上动态规划，Max 选择较大路径 *)
+
+
+
+
+
+(* Project Euler 第18题：最大路径和（版本2） *)
+
+m = "75
+
+95 64
+
+17 47 82
+
+18 35 87 10
+
+20 04 82 47 65
+
+19 01 23 75 03 34
+
+88 02 77 73 07 63 67
+
+99 65 04 28 06 16 70 92
+
+41 41 26 56 83 40 80 70 33
+
+41 48 72 33 47 32 37 16 94 29
+
+53 71 44 65 25 43 91 52 97 51 14
+
+70 11 33 28 77 73 17 78 39 68 17 57
+
+91 71 52 38 17 14 91 43 58 50 27 29 48
+
+63 66 04 68 89 53 67 30 73 16 69 87 40 31
+
+04 62 98 27 23 09 70 98 73 93 38 53 60 04 23";
+
+m = StringSplit[m];
+
+m = ToExpression[m];
+
+m = TakeList[m, Range[15]];
+
+Do[m[[i, j]] =
+
+Max[{m[[i, j]] + m[[i + 1, j]], m[[i, j]] + m[[i + 1, j + 1]]}], {i,
+
+14, 1, -1}, {j, 1, i}];
+
+m[[1,1]]
+
+(* 语法解释：Do 循环替代For循环，{i,14,1,-1} 从底向上遍历，Max[...] 比较两条路径，TakeList 按指定长度分割列表 *)
+
+
+
+
+
+(* Project Euler 第21题：亲和数求和（版本1） *)
+
+amicableQ[x_] :=
+
+Module[{n1, n2}, n1 = Total[Most[Divisors[x]]];
+
+n2 = Total[Most[Divisors[n1]]];
+
+x == n2 && x != n1 ];
+
+Cases[Range[2, 9999], _?amicableQ] // Total
+
+(* 语法解释：Module 创建局部变量，Most[Divisors[x]] 去掉自身求真因数，_?amicableQ 匹配满足条件的数，// Total 对结果求和 *)
+
+
+
+
+
+(* Project Euler 第21题：亲和数求和（版本2） *)
+
+amicable[x_] := Total[Most[Divisors[x]]];
+
+Cases[Range[2,
+
+9999], _?(amicable[#] != # &&
+
+amicable[amicable[#]] == # &)] // Total
+
+(* 语法解释：amicable[#] != # 排除完全数，amicable[amicable[#]] == # 检查亲和数条件，_?(...) 纯函数测试条件 *)
+
+
+
+
+
+(* Project Euler 第21题：亲和数求和（版本3） *)
+
+g = Graph[# -> (DivisorSigma[1, #] - #) & /@ Range[10000]];
+
+Total@Flatten@FindCycle[g, {2}, All][[All, All, 1]]
+
+(* 语法解释：Graph 构建有向图，DivisorSigma[1, #] - # 计算真因数和，FindCycle[g, {2}, All] 找长度为2的环，Flatten 展平结果 *)
+
+
+
+
+
+(* Project Euler 第21题：亲和数求和（版本4） *)
+
+g = Graph[# -> (DivisorSigma[1, #] - #) & /@ Range[10000]];
+
+Total@Flatten@(FindCycle[g, {2}, All][[All, 1]] /.
+
+DirectedEdge[a_, b_] -> {a, b})
+
+(* 语法解释：/. DirectedEdge[a_, b_] -> {a, b} 将有向边转换为点对，[[All, 1]] 取环的第一个元素，Total@Flatten@ 计算总和 *)
+
+
+
+
+
+(* Project Euler 第21题：亲和数求和（版本5） *)
+
+properDivisorSum[n_] := DivisorSigma[1, n] - n;
+
+n = 10000;
+
+amicablePairs =
+
+Select[Table[{i, properDivisorSum[i]}, {i, 2, n}],
+
+Function[{pair},
+
+With[{i = pair[[1]], j = pair[[2]]},
+
+i < j && j <= n && properDivisorSum[j] == i]]]
+
+Total[Flatten@amicablePairs]
+
+(* 语法解释：DivisorSigma[1, n] - n 计算真因数和，Function[{pair}, ...] 定义函数，With 创建局部变量，i < j 避免重复 *)
+
+
+
+
+
+(* Project Euler 第23题：非丰富数之和（版本1） *)
+
+abundantNumbers = Select[Range[28123], Total[Most[Divisors[#]]] > # &];
+
+sumsOfTwoAbundantNumbers = Union[Flatten[Outer[Plus, abundantNumbers, abundantNumbers]]];
+
+nonAbundantSums = Complement[Range[28123], sumsOfTwoAbundantNumbers];
+
+Total[nonAbundantSums]
+
+(* 语法解释：Select 筛选丰富数，Outer[Plus, ...] 计算所有两两和，Union 去重，Complement 找差集 *)
+
+
+
+
+
+(* Project Euler 第23题：非丰富数之和（版本2） *)
+
+properDivisorSum[n_] := DivisorSigma[1, n] - n
+
+isAbundant[n_] := properDivisorSum[n] > n
+
+maxSum = 28123;
+
+abundantNumbers = Select[Range[2, maxSum], isAbundant];
+
+abundantSums = ConstantArray[False, maxSum];
+
+len = Length[abundantNumbers];
+
+Do[
+
+a = abundantNumbers[[i]];
+
+Do[
+
+b = abundantNumbers[[j]];
+
+s = a + b;
+
+If[s <= maxSum, abundantSums[[s]] = True],
+
+{j, 1, i}
+
+],
+
+{i, 1, len}
+
+];
+
+nonAbundantSums = Flatten[Position[abundantSums, False]];
+
+result = Total[nonAbundantSums];
+
+Print["不能表示为两个丰富数之和的正整数共有 ", Length[nonAbundantSums], " 个"];
+
+Print["这些数的总和是: ", result];
+
+(* 语法解释：ConstantArray[False, maxSum] 创建布尔数组，Do 双重循环标记可表示的数，Position[abundantSums, False] 找False位置，Flatten 展平结果 *)
