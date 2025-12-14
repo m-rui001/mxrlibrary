@@ -1,0 +1,481 @@
+\documentclass{beamer}
+\usepackage{ctex}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[UTF8]{ctex}
+\usetheme{Madrid}
+\definecolor{myteal}{cmyk}{0.5,0,0.15,0}
+\definecolor{myyellow}{cmyk}{0,0.2,0.7,0}
+\definecolor{myblue}{cmyk}{0.80,0.13,0.14,0.04}
+\definecolor{mygreen}{cmyk}{0.4,0,0.4,0}
+
+\setbeamercolor{structure}{fg=mygreen}                     % 所有结构性元素（项目符号、链接等）
+\setbeamercolor{title}{fg=white, bg=mygreen}               % 主标题背景
+\setbeamercolor{frametitle}{fg=white, bg=mygreen!90!black} % 帧标题（稍深一点增加层次）
+\setbeamercolor{block title}{fg=white, bg=mygreen!80!black}% 定义/性质等 block 标题
+\setbeamercolor{block body}{bg=mygreen!5}                  % block 内容背景（极淡青绿）
+\setbeamercolor{itemize item}{fg=mygreen}                  % 项目符号颜色
+\title{单层神经网络：回归分析}
+\institute{上海师范大学数理学院}
+\date{}
+\begin{document}
+\frame{\titlepage}
+
+\section{线性回归模型}
+
+\begin{frame}{线性回归基础}
+\begin{block}{回归问题定义}
+回归任务的目标是预测一个或多个连续目标变量 $t$ 的值，给定一个 $D$ 维输入向量 $\mathbf{x}$。我们通常拥有包含 $N$ 个观测样本 $\{\mathbf{x}_n\}$ 及对应目标值 $\{t_n\}$ 的训练数据集，目标是预测新输入 $\mathbf{x}$ 对应的 $t$ 值。
+\end{block}
+
+\begin{itemize}
+\item 核心思想：构建函数 $y(\mathbf{x}, \mathbf{w})$，其输出作为目标变量 $t$ 的预测
+\item 参数 $\mathbf{w}$ 通过训练数据学习获得
+\item 最简单模型：输入变量的线性组合
+\[
+y(\mathbf{x}, \mathbf{w}) = w_0 + w_1x_1 + \cdots + w_Dx_D
+\]
+\item 关键特性：模型关于参数 $\{w_0,\ldots,w_D\}$ 是线性的
+\item 局限性：也是输入变量 $\{x_i\}$ 的线性函数，这严重限制了模型表达能力
+\end{itemize}
+\end{frame}
+
+\begin{frame}{基础函数扩展}
+\begin{block}{非线性变换}
+通过使用固定非线性函数的线性组合，可以扩展线性模型的能力：
+\[
+y(\mathbf{x}, \mathbf{w}) = w_0 + \sum_{j=1}^{M-1} w_j\phi_j(\mathbf{x})
+\]
+其中 $\phi_j(\mathbf{x})$ 称为基础函数，$M$ 是总参数数量。
+\end{block}
+
+\begin{itemize}
+\item \textbf{偏置参数} $w_0$：允许数据中存在固定偏移
+\item 为简化表示，常定义虚拟基础函数 $\phi_0(\mathbf{x}) = 1$，使模型变为：
+\[
+y(\mathbf{x}, \mathbf{w}) = \sum_{j=0}^{M-1} w_j\phi_j(\mathbf{x}) = \mathbf{w}^T\phi(\mathbf{x})
+\]
+其中 $\mathbf{w} = (w_0,\ldots,w_{M-1})^T$ 且 $\phi = (\phi_0,\ldots,\phi_{M-1})^T$
+\item \textbf{神经网络表示}：该模型可表示为单层神经网络
+\item 尽管使用非线性基础函数，但模型仍被称为线性模型
+\end{itemize}
+\end{frame}
+
+\begin{frame}{常用基础函数类型}
+\begin{block}{多样化基础函数}
+选择合适的基础函数对模型性能至关重要。常见类型包括：
+\end{block}
+
+\begin{itemize}
+\item \textbf{多项式基础函数}：$\phi_j(x) = x^j$
+\begin{itemize}
+\item 简单直观，但在高维空间效果不佳
+\item 高阶项可能导致数值不稳定
+\end{itemize}
+
+\item \textbf{高斯基础函数}：
+\[
+\phi_j(\mathbf{x}) = \exp\left\{-\frac{(\mathbf{x}-\boldsymbol{\mu}_j)^2}{2s^2}\right\}
+\]
+\item \textbf{Sigmoid基础函数}：
+\[
+\phi_j(\mathbf{x}) = \sigma\left(\frac{\mathbf{x}-\boldsymbol{\mu}_j}{s}\right)
+\]
+其中 $\sigma(a) = \frac{1}{1+\exp(-a)}$ 为逻辑sigmoid函数
+\begin{itemize}
+\item tanh函数与sigmoid等价：$\tanh(a) = 2\sigma(2a)-1$
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{基础函数特性与选择}
+\begin{block}{基础函数的频域特性}
+不同基础函数在空间和频率域表现出不同特性：
+\end{block}
+
+\begin{itemize}
+\item \textbf{傅里叶基础}：正弦和余弦函数
+\begin{itemize}
+\item 每个基础函数代表特定频率
+\item 具有无限空间范围
+\item 适合周期性数据
+\end{itemize}
+
+\item \textbf{小波基础}：
+\begin{itemize}
+\item 同时在空间和频率域局部化
+\item 通常定义为相互正交
+\item 特别适用于输入值位于规则网格上的情况（如时间序列、图像像素）
+\end{itemize}
+
+\item \textbf{现代深度学习方法}：
+\begin{itemize}
+\item 传统方法需要手工设计基础函数，这在复杂应用中非常困难
+\item 深度学习避免了这一问题，通过从数据本身学习所需的非线性变换
+\item 网络层自动学习适合任务的基础表示
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{概率视角}
+
+\begin{frame}{似然函数与高斯噪声}
+\begin{block}{概率模型}
+假设目标变量 $t$ 由确定性函数 $y(\mathbf{x},\mathbf{w})$ 加上高斯噪声构成：
+\[
+t = y(\mathbf{x},\mathbf{w}) + \varepsilon
+\]
+其中 $\varepsilon$ 是零均值、方差为 $\sigma^2$ 的高斯随机变量。
+\end{block}
+
+\begin{itemize}
+
+\item 给定独立同分布数据集 $\{\mathbf{x}_n,t_n\}_{n=1}^N$，似然函数为：
+\[
+p(\mathbf{t}|\mathbf{X},\mathbf{w},\sigma^2) = \prod_{n=1}^N \mathcal{N}(t_n|\mathbf{w}^T\phi(\mathbf{x}_n),\sigma^2)
+\]
+其中 $\mathbf{t} = (t_1,\ldots,t_N)^T$，$\mathbf{X} = \{\mathbf{x}_1,\ldots,\mathbf{x}_N\}$
+
+\item 对数似然函数：
+\[
+\ln p(\mathbf{t}|\mathbf{X},\mathbf{w},\sigma^2) = -\frac{N}{2}\ln\sigma^2 - \frac{N}{2}\ln(2\pi) - \frac{1}{\sigma^2}E_D(\mathbf{w})
+\]
+其中 $E_D(\mathbf{w}) = \frac{1}{2}\sum_{n=1}^N\{t_n - \mathbf{w}^T\phi(\mathbf{x}_n)\}^2$ 为平方和误差函数
+\end{itemize}
+\end{frame}
+
+\begin{frame}{最大似然估计}
+\begin{block}{参数优化}
+最大化对数似然函数等价于最小化平方和误差函数，因为前两项与 $\mathbf{w}$ 无关。
+\end{block}
+
+\begin{itemize}
+\item \textbf{权重参数} $\mathbf{w}$ 的梯度：
+\[
+\nabla_{\mathbf{w}}\ln p(\mathbf{t}|\mathbf{X},\mathbf{w},\sigma^2) = \frac{1}{\sigma^2}\sum_{n=1}^N\{t_n - \mathbf{w}^T\phi(\mathbf{x}_n)\}\phi(\mathbf{x}_n)^T
+\]
+
+\item 令梯度为零，解得：
+\[
+\mathbf{w}_{\text{ML}} = (\Phi^T\Phi)^{-1}\Phi^T\mathbf{t}
+\]
+这称为最小二乘问题的\textbf{正规方程}
+
+\item \textbf{设计矩阵} $\Phi$：$N\times M$ 矩阵，元素 $\Phi_{nj} = \phi_j(\mathbf{x}_n)$
+
+\item 矩阵 $\Phi^\dagger \equiv (\Phi^T\Phi)^{-1}\Phi^T$ 称为\textbf{Moore-Penrose伪逆}，是矩阵逆概念对非方阵的推广
+\end{itemize}
+\end{frame}
+
+\begin{frame}{偏差参数与噪声估计}
+\begin{itemize}
+\item 令 $\partial E_D/\partial w_0 = 0$，解得：
+\[
+w_0 = \bar{t} - \sum_{j=1}^{M-1}w_j\bar{\phi}_j
+\]
+其中 $\bar{t} = \frac{1}{N}\sum_{n=1}^N t_n$，$\bar{\phi}_j = \frac{1}{N}\sum_{n=1}^N\phi_j(\mathbf{x}_n)$
+
+\item 物理解释：偏置参数 $w_0$ 补偿了目标值平均值与加权基础函数平均值之间的差异
+
+\item \textbf{噪声方差估计}：对 $\sigma^2$ 最大化对数似然
+\[
+\sigma^2_{\text{ML}} = \frac{1}{N}\sum_{n=1}^N\{t_n - \mathbf{w}_{\text{ML}}^T\phi(\mathbf{x}_n)\}^2
+\]
+
+\item 解释：最大似然估计的方差参数等于目标值围绕回归函数的残差方差
+\end{itemize}
+\end{frame}
+
+\begin{frame}{最小二乘的几何解释}
+\begin{block}{向量空间视角}
+考虑 $N$ 维空间，坐标轴对应 $t_1,\ldots,t_N$，则 $\mathbf{t} = (t_1,\ldots,t_N)^T$ 是该空间中的向量。
+\end{block}
+
+\begin{itemize}
+\item 每个基础函数 $\phi_j(\mathbf{x})$ 在 $N$ 个数据点上的取值构成向量 $\boldsymbol{\phi}_j$
+\begin{itemize}
+\item $\boldsymbol{\phi}_j$ 对应设计矩阵 $\Phi$ 的第 $j$ 列
+\item $\phi(\mathbf{x}_n)$ 对应 $\Phi$ 的第 $n$ 行转置
+\end{itemize}
+
+\item 若基础函数数量 $M$ 小于数据点数量 $N$，则 $M$ 个向量 $\boldsymbol{\phi}_j$ 张成 $M$ 维线性子空间 $S$
+\item 定义 $N$ 维向量 $\mathbf{y}$，其第 $n$ 个元素为 $y(\mathbf{x}_n,\mathbf{w})$
+\begin{itemize}
+\item $\mathbf{y}$ 是 $\boldsymbol{\phi}_j$ 的任意线性组合，可位于子空间 $S$ 中任意位置
+\end{itemize}
+
+\item 平方和误差 $E_D(\mathbf{w})$ 等于 $\mathbf{y}$ 与 $\mathbf{t}$ 之间欧氏距离平方的一半
+\item 最小二乘解对应于 $\mathbf{t}$ 在子空间 $S$ 上的\textbf{正交投影}
+\end{itemize}
+\end{frame}
+
+\section{优化与正则化}
+
+\begin{frame}{序列学习算法}
+\begin{block}{批量方法与在线方法}
+最大似然解 $\mathbf{w}_{\text{ML}} = (\Phi^T\Phi)^{-1}\Phi^T\mathbf{t}$ 涉及一次性处理整个训练集，称为\textbf{批量方法}。
+\end{block}
+
+\begin{itemize}
+\item \textbf{计算挑战}：
+\begin{itemize}
+\item 大型数据集上计算成本高昂
+\item 实时应用中数据可能连续到达
+\end{itemize}
+
+\item \textbf{随机梯度下降} (SGD)：
+\begin{itemize}
+\item 适用于可分解为数据点和的误差函数 $E = \sum_n E_n$
+\item 每次呈现一个数据点后更新参数
+\item 更新规则：$\mathbf{w}^{(\tau+1)} = \mathbf{w}^{(\tau)} - \eta\nabla E_n$
+\end{itemize}
+
+\item \textbf{LMS算法}（最小均方算法）：
+\begin{itemize}
+\item 针对平方和误差的SGD
+\item $\mathbf{w}^{(\tau+1)} = \mathbf{w}^{(\tau)} + \eta(t_n - \mathbf{w}^{(\tau)T}\phi_n)\phi_n$
+\item 其中 $\phi_n = \phi(\mathbf{x}_n)$，$\eta$ 为学习率
+\item $\mathbf{w}$ 从初始向量 $\mathbf{w}^{(0)}$ 开始迭代
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{正则化最小二乘}
+\begin{itemize}
+\item \textbf{权重衰减}：最简单正则化形式
+\[
+E_W(\mathbf{w}) = \frac{1}{2}\sum_j w_j^2 = \frac{1}{2}\mathbf{w}^T\mathbf{w}
+\]
+
+\item 总误差函数：
+\[
+\frac{1}{2}\sum_{n=1}^N\{t_n - \mathbf{w}^T\phi(\mathbf{x}_n)\}^2 + \frac{\lambda}{2}\mathbf{w}^T\mathbf{w}
+\]
+
+\item \textbf{统计解释}：参数收缩方法，将参数值向零收缩
+\item 优势：误差函数保持关于 $\mathbf{w}$ 的二次形式，可得到闭式解：
+\[
+\mathbf{w} = (\lambda I + \Phi^T\Phi)^{-1}\Phi^T\mathbf{t}
+\]
+
+\item \textbf{数值稳定性}：正则化项确保矩阵 $(\lambda I + \Phi^T\Phi)$ 非奇异，即使在基础向量接近共线时
+\item 当 $\lambda \to 0$ 时，解趋近于未正则化的最小二乘解
+\end{itemize}
+\end{frame}
+
+\begin{frame}{多输出回归}
+\begin{block}{多变量预测}
+有时需要同时预测 $K>1$ 个目标变量，记为向量 $\mathbf{t} = (t_1,\ldots,t_K)^T$。
+\end{block}
+
+\begin{itemize}
+\item \textbf{多输出回归}：使用相同基础函数集建模所有目标分量
+\[
+\mathbf{y}(\mathbf{x},\mathbf{W}) = \mathbf{W}^T\phi(\mathbf{x})
+\]
+\begin{itemize}
+\item $\mathbf{y}$ 是 $K$ 维列向量
+\item $\mathbf{W}$ 是 $M \times K$ 参数矩阵
+\item $\phi(\mathbf{x})$ 是 $M$ 维列向量
+\end{itemize}
+
+\item \textbf{神经网络表示}：单层参数网络，多个输出节点
+
+\item 假设条件分布为各向同性高斯：
+\[
+p(\mathbf{t}|\mathbf{x},\mathbf{W},\sigma^2) = \mathcal{N}(\mathbf{t}|\mathbf{W}^T\phi(\mathbf{x}),\sigma^2I)
+\]
+
+\item 最大似然解：$\mathbf{W}_{\text{ML}} = (\Phi^T\Phi)^{-1}\Phi^T\mathbf{T}$
+\begin{itemize}
+\item $\mathbf{T}$ 是 $N \times K$ 矩阵，每行对应一个目标向量的转置
+\item 该解在不同目标变量间解耦，只需计算一次伪逆矩阵 $\Phi^\dagger$
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\section{决策理论}
+
+\begin{frame}{回归的决策理论}
+\begin{block}{两阶段预测框架}
+回归任务可分解为两个阶段：
+\end{block}
+
+\begin{enumerate}
+\item \textbf{推断阶段}：使用训练数据确定预测分布 $p(t|\mathbf{x})$
+\item \textbf{决策阶段}：使用预测分布确定最优预测值 $f(\mathbf{x})$
+\end{enumerate}
+
+\begin{itemize}
+\item 概率模型：假设条件分布为高斯分布
+\[
+p(t|\mathbf{x},\mathbf{w},\sigma^2) = \mathcal{N}(t|y(\mathbf{x},\mathbf{w}),\sigma^2)
+\]
+
+\item 预测分布：
+\[
+p(t|\mathbf{x},\mathbf{w}_{\text{ML}},\sigma^2_{\text{ML}}) = \mathcal{N}(t|y(\mathbf{x},\mathbf{w}_{\text{ML}}),\sigma^2_{\text{ML}})
+\]
+
+\item \textbf{损失函数}：衡量预测 $f(\mathbf{x})$ 与真实值 $t$ 之间的误差
+\begin{itemize}
+\item 选择特定 $f(\mathbf{x})$ 会带来损失 $L(t,f(\mathbf{x}))$
+\item 由于不知道 $t$ 的真实值，我们最小化期望损失
+\end{itemize}
+
+\item 期望损失：
+\[
+\mathbb{E}[L] = \iint L(t,f(\mathbf{x}))p(\mathbf{x},t) d\mathbf{x}dt
+\]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{平方损失与回归函数}
+\begin{block}{最优决策}
+平方损失函数 $L(t,f(\mathbf{x})) = \{f(\mathbf{x})-t\}^2$ 是回归问题的常用选择。
+\end{block}
+
+\begin{itemize}
+\item 期望损失：
+\[
+\mathbb{E}[L] = \iint \{f(\mathbf{x})-t\}^2p(\mathbf{x},t) d\mathbf{x}dt
+\]
+
+\item \textbf{变分法求解}：对任意灵活函数 $f(\mathbf{x})$ 最小化 $\mathbb{E}[L]$
+\[
+\frac{\delta\mathbb{E}[L]}{\delta f(\mathbf{x})} = 2\int\{f(\mathbf{x})-t\}p(\mathbf{x},t)dt = 0
+\]
+
+\item 最优解（回归函数）：
+\[
+f^\star(\mathbf{x}) = \frac{1}{p(\mathbf{x})}\int tp(\mathbf{x},t)dt = \int tp(t|\mathbf{x})dt = \mathbb{E}_t[t|\mathbf{x}]
+\]
+
+\item 物理解释：回归函数是最优预测，即条件分布 $p(t|\mathbf{x})$ 的均值
+
+
+\item 对于高斯条件分布，条件均值简化为：
+\[
+\mathbb{E}[t|\mathbf{x}] = \int tp(t|\mathbf{x})dt = y(\mathbf{x},\mathbf{w})
+\]
+\end{itemize}
+\end{frame}
+
+\begin{frame}{损失函数分析}
+\begin{block}{期望损失分解}
+利用条件期望性质，平方损失期望可分解为：
+\[
+\{f(\mathbf{x})-t\}^2 = \{f(\mathbf{x})-\mathbb{E}[t|\mathbf{x}]+\mathbb{E}[t|\mathbf{x}]-t\}^2
+\]
+\end{block}
+
+\begin{itemize}
+\item 展开后代入期望损失：
+\[
+\mathbb{E}[L] = \int\{f(\mathbf{x})-\mathbb{E}[t|\mathbf{x}]\}^2p(\mathbf{x})d\mathbf{x} + \int\text{var}[t|\mathbf{x}]p(\mathbf{x})d\mathbf{x}
+\]
+
+\item 解释：
+\begin{itemize}
+\item 第一项：预测函数 $f(\mathbf{x})$ 与条件期望间的差异
+\item 第二项：条件分布的方差，平均后表示数据的内在变异性（噪声）
+\end{itemize}
+
+\item \textbf{关键结论}：
+\begin{itemize}
+\item 当 $f(\mathbf{x}) = \mathbb{E}[t|\mathbf{x}]$ 时，第一项为零，达到最小值
+\item 第二项与 $f(\mathbf{x})$ 无关，代表不可减少的最小损失
+\item 最优最小二乘预测器由条件均值给出
+\end{itemize}
+
+\item \textbf{推广}：更一般的Minkowski损失 $\mathbb{E}[L_q] = \iint\|f(\mathbf{x})-t\|^qp(\mathbf{x},t)d\mathbf{x}dt$
+\end{itemize}
+\end{frame}
+
+\section{偏差-方差权衡}
+
+\begin{frame}{模型复杂度与泛化}
+\begin{block}{挑战与权衡}
+线性回归模型中，基础函数的形式和数量通常给定。最大似然可能导致有限数据集上的严重过拟合，但限制基础函数数量会降低模型捕捉数据中重要趋势的灵活性。
+\end{block}
+
+\begin{itemize}
+\item \textbf{核心问题}：如何确定合适的正则化系数 $\lambda$？
+\begin{itemize}
+\item 同时最小化正则化误差函数和 $\lambda$ 会导致未正则化解（$\lambda=0$）
+\item 需要独立于参数优化的方法
+\end{itemize}
+
+\item \textbf{频率学派视角}：偏差-方差权衡
+\begin{itemize}
+\item 考虑条件期望 $h(\mathbf{x}) = \mathbb{E}[t|\mathbf{x}] = \int tp(t|\mathbf{x})dt$
+\item 期望平方损失：
+\[
+\mathbb{E}[L] = \int\{f(\mathbf{x})-h(\mathbf{x})\}^2p(\mathbf{x})d\mathbf{x} + \iint\{h(\mathbf{x})-t\}^2p(\mathbf{x},t)d\mathbf{x}dt
+\]
+\item 第二项是数据固有噪声，与 $f(\mathbf{x})$ 无关
+\end{itemize}
+
+\item \textbf{贝叶斯视角}：过拟合是最大似然的不幸特性
+\begin{itemize}
+\item 通过参数边缘化，贝叶斯方法可避免过拟合问题
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{偏差-方差分解}
+\begin{block}{期望误差分析}
+在有限数据集 $\mathcal{D}$（含 $N$ 个点）上，无法精确获知回归函数 $h(\mathbf{x})$。
+\end{block}
+
+\begin{itemize}
+\item {}假设有大量大小为 $N$ 的数据集，每个都独立抽样自 $p(t,\mathbf{x})$
+\begin{itemize}
+\item 每个数据集 $\mathcal{D}$ 产生预测函数 $f(\mathbf{x};\mathcal{D})$
+\item 不同数据集产生不同函数和损失值
+\item 通过数据集集合上的平均评估学习算法性能
+\end{itemize}
+
+\item {}对特定输入 $\mathbf{x}$ 和数据集 $\mathcal{D}$，考虑
+\begin{align*}
+\mathbb{E}_\mathcal{D}\big[(f(\mathbf{x};\mathcal{D}) - h(\mathbf{x}))^2\big] 
+&= \big(\mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})] - h(\mathbf{x})\big)^2 \\
+&\quad + \mathbb{E}_\mathcal{D}\big[(f(\mathbf{x};\mathcal{D}) - \mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})])^2\big]
+\end{align*}
+\begin{itemize}
+\item \textbf{平方偏差}：$\{\mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})]-h(\mathbf{x})\}^2$
+\begin{itemize}
+\item 衡量所有数据集平均预测与理想回归函数的差异
+\end{itemize}
+\item \textbf{方差}：$\mathbb{E}_\mathcal{D}[\{f(\mathbf{x};\mathcal{D})-\mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})]\}^2]$
+\begin{itemize}
+\item 衡量单个数据集解围绕平均解的波动程度
+\item 反映函数 $f(\mathbf{x};\mathcal{D})$ 对特定数据集选择的敏感度
+\end{itemize}
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{期望损失分解}
+\begin{block}{完整分解}
+将偏差-方差分解整合到期望损失中，得到：
+\[
+\text{期望损失} = \text{(偏差)}^2 + \text{方差} + \text{噪声}
+\]
+\end{block}
+
+\begin{align*}
+\text{(偏差)}^2 &= \int\{\mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})]-h(\mathbf{x})\}^2p(\mathbf{x})d\mathbf{x} \\
+\text{方差} &= \int\mathbb{E}_\mathcal{D}[\{f(\mathbf{x};\mathcal{D})-\mathbb{E}_\mathcal{D}[f(\mathbf{x};\mathcal{D})]\}^2]p(\mathbf{x})d\mathbf{x} \\
+\text{噪声} &= \iint\{h(\mathbf{x})-t\}^2p(\mathbf{x},t)d\mathbf{x}dt
+\end{align*}
+
+\begin{itemize}
+\item 高度灵活模型：低偏差，高方差
+\item 相对刚性模型：高偏差，低方差
+\item 最佳预测能力：在偏差和方差间取得平衡
+\end{itemize}
+\end{frame}
+\end{document}
