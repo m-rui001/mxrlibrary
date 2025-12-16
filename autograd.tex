@@ -1,0 +1,476 @@
+\documentclass{beamer}
+\usepackage[UTF8]{ctex}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{algorithm2e}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% Listings Settings
+\lstset{
+    basicstyle=\small\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    tabsize=4,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    extendedchars=true,
+    inputencoding=utf8,
+    literate={…}{{...}}3 {，}{{,}}1 {；}{{;}}1 {（}{{(}}1 {）}{{)}}1 {％}{{\%}}1 {！}{{!}}1 {：}{{:}}1,
+}
+\usetheme{Madrid}
+\definecolor{myteal}{cmyk}{0.5,0,0.15,0}
+\definecolor{myyellow}{cmyk}{0,0.2,0.7,0}
+\definecolor{myblue}{cmyk}{0.80,0.13,0.14,0.04}
+\definecolor{mygreen}{cmyk}{0.4,0,0.4,0}
+
+\setbeamercolor{structure}{fg=mygreen}
+\setbeamercolor{title}{fg=white, bg=mygreen}
+\setbeamercolor{frametitle}{fg=white, bg=mygreen!90!black}
+\setbeamercolor{block title}{fg=white, bg=mygreen!80!black}
+\setbeamercolor{block body}{bg=mygreen!5}
+\setbeamercolor{itemize item}{fg=mygreen}
+
+\title{自动微分}
+\institute{上海师范大学数理学院}
+\begin{document}
+\frame{\titlepage}
+\begin{frame}{目录}
+    \tableofcontents
+\end{frame}
+% ==================================================
+\begin{frame}{什么是自动微分？}
+\begin{block}{定义}
+自动微分(AD)是一种基于链式法则和计算图的数值技术，能够精确高效地计算复杂函数的导数。
+\end{block}
+
+\begin{itemize}
+\item 不同于数值微分(近似、易出错)和符号微分(表达式爆炸)
+\item 现代深度学习框架(PyTorch, TensorFlow)的核心引擎
+\item 实现了反向传播的底层机制
+\item 支持高阶导数、控制流和自定义梯度
+\item 使训练拥有百万级参数的神经网络成为可能
+\end{itemize}
+
+\begin{exampleblock}{核心价值}
+当我们在PyTorch中调用\texttt{loss.backward()}时，系统能在数秒内计算出所有参数的梯度。自动微分技术是深度学习成功的关键基石。
+\end{exampleblock}
+\end{frame}
+
+% ==================================================
+\begin{frame}{微分方法比较}
+\begin{block}{总结}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{方法} & \textbf{优点} & \textbf{缺点} \\
+\hline
+数值微分 & 简单易实现 & 精度低，效率差，误差大 \\
+符号微分 & 精确结果 & 表达式爆炸，不支持控制流 \\
+自动微分 & 精确+高效+完整代码支持 & 实现复杂 \\
+\hline
+\end{tabular}
+\end{block}
+
+\begin{itemize}
+\item \textbf{数值微分}: $ f'(x) \approx \frac{f(x+h)-f(x)}{h} $
+\begin{itemize}
+\item 选择合适$h$困难：太小导致舍入误差，太大导致截断误差
+\item $n$维参数计算成本为$O(n)$
+\end{itemize}
+\item \textbf{符号微分}: 代数推导 $ \frac{d}{dx}\sin(x^2) = 2x\cos(x^2) $
+\begin{itemize}
+\item 复杂表达式呈指数级增长
+\item 无法处理条件语句或循环
+\end{itemize}
+\item \textbf{自动微分}: 将函数分解为基本运算
+\begin{itemize}
+\item 机器精度的准确性
+\item 与原函数时间复杂度在同一量级
+\item 支持任意Python控制流
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+% ==================================================
+\section{计算图与链式法则}
+\begin{frame}{计算图}
+\begin{block}{基本原理}
+将函数表示为有向无环图(DAG)，节点为变量/操作，边表示数据依赖关系。
+\begin{exampleblock}{示例: $ y = \sin(x_1 x_2) $}
+计算步骤:
+\begin{enumerate}
+\item $ v_1 = x_1 \times x_2 $
+\item $ v_2 = \sin(v_1) $
+\item $ y = v_2 $
+\end{enumerate}
+
+图结构:
+\begin{itemize}
+\item 输入节点: $x_1, x_2$
+\item 中间节点: $v_1, v_2$
+\item 输出节点: $y$
+\item 边表示数据流向和依赖关系
+\end{itemize}
+\end{exampleblock}
+\end{block}
+\end{frame}
+
+% ==================================================
+\begin{frame}{链式法则}
+\begin{block}{核心公式}
+对于复合函数 $y = f(g(h(x)))$:
+$$
+\frac{dy}{dx} = \frac{dy}{dg} \cdot \frac{dg}{dh} \cdot \frac{dh}{dx}
+$$
+\end{block}
+
+\begin{itemize}
+\item \textbf{前向传播}: 计算函数值
+    \begin{itemize}
+    \item 按拓扑顺序执行操作
+    \item 存储中间结果用于梯度计算
+    \end{itemize}
+\item \textbf{反向传播}: 从输出到输入传播梯度
+    \begin{itemize}
+    \item 利用已存储的中间结果
+    \item 应用链式法则计算各层导数
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+% ==================================================
+\section{自动微分的两种模式}
+\begin{frame}{前向模式}
+\begin{block}{工作原理}
+\begin{itemize}
+\item 从输入到输出传播导数
+\item 在计算中间值的同时计算导数
+\item 每次前向传播计算一个方向的导数
+\end{itemize}
+\end{block}
+
+\begin{exampleblock}{数学表达}
+对于 $f: \mathbb{R}^n \rightarrow \mathbb{R}^m$，前向模式计算:
+$$
+J \cdot \mathbf{v} = \begin{bmatrix}
+\frac{\partial f_1}{\partial x_1} & \cdots & \frac{\partial f_1}{\partial x_n} \\
+\vdots & \ddots & \vdots \\
+\frac{\partial f_m}{\partial x_1} & \cdots & \frac{\partial f_m}{\partial x_n}
+\end{bmatrix} \begin{bmatrix} v_1 \\ \vdots \\ v_n \end{bmatrix}
+$$
+\end{exampleblock}
+
+\begin{itemize}
+\item 适用于输入维度$n\ll$ 输出维度$m$的情况
+\item 通常无需计算出Jacobian矩阵，每次前向传播计算一个方向的导数
+\item 无需存储图
+\end{itemize}
+\end{frame}
+
+% ==================================================
+\begin{frame}{反向模式}
+\begin{block}{工作原理}
+\begin{itemize}
+\item \textbf{前向阶段}: 计算值并记录计算图,\textbf{反向阶段}: 从输出到输入反向传播
+\item 一次反向传播计算所有输入的梯度
+\end{itemize}
+\end{block}
+
+\begin{exampleblock}{数学表达}
+对于 $f: \mathbb{R}^n \rightarrow \mathbb{R}^m$，反向模式计算:
+$$
+\mathbf{v}^T \cdot J = \begin{bmatrix} v_1 & \cdots & v_m \end{bmatrix} \begin{bmatrix}
+\frac{\partial f_1}{\partial x_1} & \cdots & \frac{\partial f_1}{\partial x_n} \\
+\vdots & \ddots & \vdots \\
+\frac{\partial f_m}{\partial x_1} & \cdots & \frac{\partial f_m}{\partial x_n}
+\end{bmatrix}
+$$
+\end{exampleblock}
+\begin{itemize}
+\item 在调用 torch.autograd.grad 或 tf.gradients 时，若输出非标量，必须通过 grad\_outputs 显式指定 v，以表明你希望对哪些输出分量求导、以及各自的权重。
+\item 空间复杂度: $O(\text{图大小})$,时间复杂度：$O(m)$
+\end{itemize}
+\end{frame}
+
+% ==================================================
+\begin{frame}{前向与反向模式}
+\begin{block}{为什么反向模式主导深度学习?}
+\begin{itemize}
+\item 损失函数通常是标量输出($m=1$)
+\item 模型拥有海量参数(百万到十亿级)
+\item 前向模式计算所有梯度需要$O(n)$次计算
+\item 反向模式仅需$O(1)$次计算(因为$m=1$)
+\item 计算效率对比:
+\begin{itemize}
+\item 前向模式: $n$次前向传播
+\item 反向模式: 1次前向+1次反向传播
+\end{itemize}
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ==================================================
+\section{PyTorch autograd}
+\begin{frame}[fragile]{PyTorch autograd基础}
+\begin{block}{核心组件}
+\begin{itemize}
+\item \textbf{Tensor}: 基本数据结构，具有\texttt{requires\_grad}属性
+\item \textbf{Function}: 记录操作历史，定义前向/反向计算
+\item \textbf{Autograd引擎}: 构建计算图并执行反向传播
+\end{itemize}
+\end{block}
+
+\begin{lstlisting}[language=Python]
+import torch
+x = torch.tensor(3.0, requires_grad=True)
+w = torch.tensor(2.0, requires_grad=True)
+b = torch.tensor(1.0, requires_grad=True)
+y = w * x + b  # y = 7
+loss = y**2    # loss = 49
+loss.backward()
+print(x.grad)  # dx = 28.0
+print(w.grad)  # dw = 42.0
+print(b.grad)  # db = 14.0
+\end{lstlisting}
+\end{frame}
+
+% ==================================================
+\begin{frame}{autograd内部机制}
+\begin{block}{图构建}
+\begin{itemize}
+\item 运行张量运算时，都会生成一个对应的 Function 对象。这个对象负责记录这次运算的信息。
+\item Function 对象不仅记录了参与运算的张量，还记录了进行的操作类型（如加法、乘法等）
+\item 形成图，节点代表 Function 或者是张量，边表示计算顺序。
+\item 叶节点(输入)存储梯度；中间节点通常不存储
+\end{itemize}
+\end{block}
+
+\begin{block}{梯度计算规则}
+\begin{itemize}
+\item 每个\texttt{Function}定义\texttt{forward}和\texttt{backward}方法
+\item \texttt{backward}接收上游梯度并计算下游梯度
+\item 梯度累积在叶节点的\texttt{.grad}属性中
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ==================================================
+\begin{frame}[fragile]{autograd核心API}
+\begin{block}{关键函数}
+\begin{itemize}
+\item \texttt{torch.autograd.grad(outputs, inputs)}:
+\begin{itemize}
+\item 显式计算梯度而不修改\texttt{.grad}
+\item 支持高阶导数
+\end{itemize}
+\item \texttt{torch.autograd.functional.jacobian(function, inputs)}:
+\begin{itemize}
+\item 为多输出函数计算雅可比矩阵
+\end{itemize}
+\item \texttt{torch.autograd.functional.hessian(function, inputs)}:
+\begin{itemize}
+\item 计算海森矩阵(二阶导数)
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{lstlisting}[language=Python]
+x = torch.tensor(2.0, requires_grad=True)
+y = x**3
+dy_dx = torch.autograd.grad(y, x, create_graph=True)[0]
+d2y_dx2 = torch.autograd.grad(dy_dx, x)[0]
+print(dy_dx)   # 12.0
+print(d2y_dx2) # 12.0
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{多输出函数的混合梯度}
+\begin{lstlisting}[language=Python]
+import torch
+x = torch.tensor(2.0, requires_grad=True)
+y1 = x ** 2      # y1 = x^2
+y2 = x ** 3      # y2 = x^3
+# we want: d(y1)/dx  + d(y2)/dx 
+# put outputs in a list，grad_outputs is the weights
+grad_combined = torch.autograd.grad(
+    outputs=[y1, y2],
+    inputs=x,
+    grad_outputs=[torch.tensor(1.0), torch.tensor(1.0)] 
+)[0] #you can also use torch.ones_like([y1, y2])
+print(f"Combined gradient = {grad_combined.item():.2f}")
+# dy1/dx = 2x = 4
+# dy2/dx = 3x^2 = 12
+# weighted sum= 1*4 + 1*12 = 16
+\end{lstlisting}
+\end{frame}
+
+% ==================================================
+\begin{frame}[fragile]{梯度控制与优化}
+\begin{block}{梯度管理}
+\begin{itemize}
+\item \texttt{with torch.no\_grad():}: 禁用梯度计算
+\begin{itemize}
+\item 推理和验证阶段必需
+\item 减少内存使用，提高速度
+\end{itemize}
+\item \texttt{tensor.detach()}: 创建无梯度追踪的副本
+\begin{itemize}
+\item 阻止梯度流向特定张量
+\end{itemize}
+\item \texttt{requires\_grad\_()}: 动态启用/禁用梯度
+\begin{itemize}
+\item 支持微调: 冻结部分层，仅训练其他层
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{lstlisting}[language=Python]
+with torch.no_grad():
+    prediction = model(x_test) 
+for param in model.parameters():
+    param.requires_grad_(False)  
+model.fc.requires_grad = True  #Two methods are similar,the above one is preferred
+\end{lstlisting}
+\end{frame}
+
+% ==================================================
+\begin{frame}[fragile]{梯度累积与清零}
+\begin{block}{正确的梯度更新流程}
+\begin{enumerate}
+\item \textbf{清零梯度}: \texttt{optimizer.zero\_grad()}
+\item \textbf{前向传播}: 计算预测和损失
+\item \textbf{反向传播}: \texttt{loss.backward()}
+\item \textbf{更新参数}: \texttt{optimizer.step()}
+\end{enumerate}
+\end{block}
+
+\begin{block}{为什么需要清零梯度?}
+\begin{itemize}
+\item PyTorch \textbf{默认将梯度求和}(不覆盖)
+\item 每次\texttt{backward()}调用将梯度添加到现有\texttt{.grad}值
+\item 不清零会导致跨迭代的梯度错误累积
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{训练循环示例}
+\begin{block}{标准训练步骤}
+\begin{itemize}
+\item 清零梯度
+\item 前向传播
+\item 计算损失
+\item 反向传播
+\item 更新参数
+\begin{lstlisting}[language=Python]
+for epoch in range(epochs):
+    for batch in dataloader:
+        optimizer.zero_grad() 
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+\end{lstlisting}
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ==================================================
+\begin{frame}[fragile]{自定义梯度函数}
+\begin{block}{torch.autograd.Function}
+\begin{itemize}
+\item 定义自定义操作及其梯度
+\item 继承\texttt{torch.autograd.Function}
+\item 实现静态\texttt{forward}和\texttt{backward}方法
+\item \texttt{forward}: 定义计算
+\item \texttt{backward}: 定义梯度计算
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{自定义自动微分函数}
+\begin{lstlisting}[language=Python]
+import torch
+from torch.autograd import Function
+class Square(Function):
+    @staticmethod
+    def forward(ctx, input):
+        ctx.save_for_backward(input)
+        return input ** 2
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = 2 * input * grad_output
+        return grad_input
+x = torch.tensor(3.0, requires_grad=True)
+y = Square.apply(x)
+y.backward()
+print("x.grad =", x.grad)  
+\end{lstlisting}
+\end{frame}
+
+% ==================================================
+\begin{frame}{自动微分调试}
+\begin{block}{常见问题与解决方案}
+\begin{itemize}
+\item \textbf{梯度消失/爆炸}:
+\begin{itemize}
+\item 监控梯度范数: \texttt{torch.norm(param.grad)}
+\item 应用梯度裁剪: \texttt{torch.nn.utils.clip\_grad\_norm\_}
+\end{itemize}
+\item \textbf{缺失梯度(None)}:
+\begin{itemize}
+\item 验证\texttt{requires\_grad=True}已设置
+\item 检查计算路径是否中断
+\end{itemize}
+\item \textbf{原地操作错误}:
+\begin{itemize}
+\item 避免修改参与梯度计算的张量
+\item 优先使用\texttt{x = x + 1}而非\texttt{x += 1}
+\end{itemize}
+\end{itemize}
+\end{block}
+
+\begin{block}{调试工具}
+\begin{itemize}
+\item \texttt{torch.autograd.detect\_anomaly()}: 捕获异常操作
+\item \texttt{torch.autograd.gradcheck()}: 数值验证梯度
+\item 检查\texttt{tensor.grad\_fn}: 查看计算图节点
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ==================================================
+\begin{frame}[fragile]{ 检查点}
+\begin{block}{内存优化}
+\begin{itemize}
+\item 问题: 大型模型存储计算图消耗过多内存
+\item 前向时：只保存 layer2 的输入 x，不保存输出
+\item 反向时:用保存的输入 x 重新运行 layer2 的前向
+\item 权衡: 以额外计算换取内存减少
+\end{itemize}
+\end{block}
+\begin{lstlisting}[language=Python]
+from torch.utils.checkpoint import checkpoint
+class MyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer1 = nn.Linear(100, 100)
+        self.layer2 = nn.Linear(100, 100)
+        self.layer3 = nn.Linear(100, 10)
+    def forward(self, x):
+        x = self.layer1(x)
+        x = checkpoint(self.layer2, x)
+        x = self.layer3(x)
+        return x
+\end{lstlisting}
+\end{frame}
+
+\end{document}
