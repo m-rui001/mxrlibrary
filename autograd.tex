@@ -9,12 +9,13 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
+\usetikzlibrary{arrows.meta, positioning, shapes,calc}
 
 % Listings Settings
 \lstset{
     basicstyle=\small\ttfamily,
     keywordstyle=\color{blue},
-    commentstyle=\color{green!60!black},
+    commentstyle=\color{myblue!60!black},
     stringstyle=\color{red},
     showstringspaces=false,
     breaklines=true,
@@ -29,16 +30,17 @@
 \usetheme{Madrid}
 \definecolor{myteal}{cmyk}{0.5,0,0.15,0}
 \definecolor{myyellow}{cmyk}{0,0.2,0.7,0}
-\definecolor{myblue}{cmyk}{0.80,0.13,0.14,0.04}
+\definecolor{myblue}{RGB}{8,51,110}
 \definecolor{mygreen}{cmyk}{0.4,0,0.4,0}
 
-\setbeamercolor{structure}{fg=mygreen}
-\setbeamercolor{title}{fg=white, bg=mygreen}
-\setbeamercolor{frametitle}{fg=white, bg=mygreen!90!black}
-\setbeamercolor{block title}{fg=white, bg=mygreen!80!black}
-\setbeamercolor{block body}{bg=mygreen!5}
-\setbeamercolor{itemize item}{fg=mygreen}
-
+\setbeamercolor{structure}{fg=myblue}
+\setbeamercolor{title}{fg=white, bg=myblue!90!black}
+\setbeamercolor{frametitle}{fg=white, bg=myblue!90!black}
+\setbeamercolor{block title}{fg=white, bg=myblue!80!black}
+\setbeamercolor{block body}{bg=myblue!5}
+\setbeamercolor{itemize item}{fg=myblue}
+\setbeamercolor{block title example}{fg=white, bg=myblue!80!black}
+\setbeamercolor{block body example}{bg=myblue!5}
 \title{自动微分}
 \institute{上海师范大学数理学院}
 \begin{document}
@@ -63,6 +65,27 @@
 \begin{exampleblock}{核心价值}
 当我们在PyTorch中调用\texttt{loss.backward()}时，系统能在数秒内计算出所有参数的梯度。自动微分技术是深度学习成功的关键基石。
 \end{exampleblock}
+\end{frame}
+
+\begin{frame}{自动微分框架}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    block/.style={rectangle, draw, fill=blue!20, text width=3cm, text centered, rounded corners, minimum height=1cm},
+    arrow/.style={thick,->,>=stealth}
+]
+\node[block] (input) {输入函数};
+\node[block, below of=input] (graph) {构建计算图};
+\node[block, below of=graph] (mode) {选择微分模式};
+\node[block, right of=mode, node distance=4cm] (method) {前向or反向模式};
+\node[block, below of=method] (output) {输出梯度};
+
+\draw[arrow] (input) -- (graph);
+\draw[arrow] (graph) -- (mode);
+\draw[arrow] (mode) -- (method);
+\draw[arrow] (method) -- (output);
+\end{tikzpicture}
+\end{center}
 \end{frame}
 
 % ==================================================
@@ -104,48 +127,37 @@
 \begin{frame}{计算图}
 \begin{block}{基本原理}
 将函数表示为有向无环图(DAG)，节点为变量/操作，边表示数据依赖关系。
-\begin{exampleblock}{示例: $ y = \sin(x_1 x_2) $}
-计算步骤:
-\begin{enumerate}
-\item $ v_1 = x_1 \times x_2 $
-\item $ v_2 = \sin(v_1) $
-\item $ y = v_2 $
-\end{enumerate}
-
-图结构:
-\begin{itemize}
-\item 输入节点: $x_1, x_2$
-\item 中间节点: $v_1, v_2$
-\item 输出节点: $y$
-\item 边表示数据流向和依赖关系
-\end{itemize}
-\end{exampleblock}
-\end{block}
-\end{frame}
-
-% ==================================================
-\begin{frame}{链式法则}
-\begin{block}{核心公式}
-对于复合函数 $y = f(g(h(x)))$:
-$$
-\frac{dy}{dx} = \frac{dy}{dg} \cdot \frac{dg}{dh} \cdot \frac{dh}{dx}
-$$
 \end{block}
 
-\begin{itemize}
-\item \textbf{前向传播}: 计算函数值
-    \begin{itemize}
-    \item 按拓扑顺序执行操作
-    \item 存储中间结果用于梯度计算
-    \end{itemize}
-\item \textbf{反向传播}: 从输出到输入传播梯度
-    \begin{itemize}
-    \item 利用已存储的中间结果
-    \item 应用链式法则计算各层导数
-    \end{itemize}
-\end{itemize}
-\end{frame}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    input/.style={circle, draw=myblue, thick, fill=white, minimum size=0.9cm},
+    op/.style={rectangle, draw=mygreen!70!black, thick, fill=mygreen!10, minimum width=1.2cm, minimum height=0.7cm},
+    output/.style={circle, draw=red!70!black, thick, fill=red!5, minimum size=0.9cm},
+    edge/.style={->, thick, >=Stealth}
+]
 
+% Nodes
+\node[input] (x1) {$x_1$};
+\node[input, above=1cm of x1] (x2) {$x_2$};
+\node[op, above right=0.25cm and 1.5cm of x1] (mul) {$\times$};
+\node[op, right=1.5cm of mul] (sin) {$\sin$};
+\node[output, right=1.5cm of sin] (y) {$y$};
+
+% Edges
+\draw[edge] (x1) -- (mul);
+\draw[edge] (x2) -- (mul);
+\draw[edge] (mul) -- node[above] {$v_1$} (sin);
+\draw[edge] (sin) -- node[above] {$v_2$} (y);
+
+% Caption
+\node[below=1cm of mul, text width=6cm, align=center, font=\footnotesize] {
+    计算图: $y = \sin(x_1 \times x_2)$ };
+
+\end{tikzpicture}
+\end{center}
+\end{frame}
 % ==================================================
 \section{自动微分的两种模式}
 \begin{frame}{前向模式}
@@ -175,6 +187,75 @@ $$
 \end{itemize}
 \end{frame}
 
+\begin{frame}{前向与反向模式对比框架}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.5cm and 3.5cm, % vertical and horizontal distance
+    block/.style={
+        rectangle, 
+        draw=myblue!80!black, 
+        fill=myblue!10, 
+        text width=2.6cm, 
+        align=center, 
+        rounded corners, 
+        minimum height=0.8cm,
+        font=\small
+    },
+    decision/.style={
+        diamond, 
+        draw=orange!70!black, 
+        fill=orange!15, 
+        text width=2.2cm, 
+        align=center, 
+        inner sep=2pt,
+        font=\small
+    },
+    arrow/.style={thick, -Stealth, myblue!80!black},
+    label/.style={font=\footnotesize}
+]
+
+% ========== 左侧：前向模式 ==========
+\node[block] (input1) {输入数据};
+\node[block, below=of input1] (forward1) {前向计算 \\ + 前向微分};
+\node[block, below=of forward1] (output1) {输出与导数};
+
+% ========== 右侧：反向模式 ==========
+\node[block, right=of input1] (input2) {输入数据};
+\node[block, below=of input2] (forward2) {前向计算};
+\node[block, below=of forward2] (backward) {反向微分};
+\node[block, below=of backward] (output2) {输出与梯度};
+
+% ========== 决策节点（居中于两输出下方）==========
+\node[decision, below=0cm of $(output1.south)!0.5!(output2.south)$] (decision) {输入维度 $n \ll$ 输出维度 $m$?};
+
+% ========== 连接线 ==========
+\draw[arrow] (input1) -- (forward1);
+\draw[arrow] (forward1) -- (output1);
+\draw[arrow] (input2) -- (forward2);
+\draw[arrow] (forward2) -- (backward);
+\draw[arrow] (backward) -- (output2);
+
+% 决策连接（从两个输出指向决策）
+\draw[arrow] (output1.south) |- (decision.west);
+\draw[arrow] (output2.south) |- (decision.east);
+
+% 是/否分支（可选：从决策引出建议）
+\node[above=0.2cm of input1, font=\bfseries\small, myblue] {前向模式};
+\node[above=0.2cm of input2, font=\bfseries\small, myblue] {反向模式};
+
+% 决策标签
+\node[left=0.1cm of decision.west, font=\footnotesize, red] {是};
+\node[right=0.1cm of decision.east, font=\footnotesize, blue] {否};
+
+% 建议文本（可选）
+\node[below=0.8cm of decision, align=center, font=\small] {%
+    \textcolor{red}{适合前向模式} \\
+    \textcolor{blue}{适合反向模式}
+};
+
+\end{tikzpicture}
+\end{center}
+\end{frame}
 % ==================================================
 \begin{frame}{反向模式}
 \begin{block}{工作原理}
@@ -200,23 +281,74 @@ $$
 \end{itemize}
 \end{frame}
 
-% ==================================================
-\begin{frame}{前向与反向模式}
-\begin{block}{为什么反向模式主导深度学习?}
-\begin{itemize}
-\item 损失函数通常是标量输出($m=1$)
-\item 模型拥有海量参数(百万到十亿级)
-\item 前向模式计算所有梯度需要$O(n)$次计算
-\item 反向模式仅需$O(1)$次计算(因为$m=1$)
-\item 计算效率对比:
-\begin{itemize}
-\item 前向模式: $n$次前向传播
-\item 反向模式: 1次前向+1次反向传播
-\end{itemize}
-\end{itemize}
-\end{block}
-\end{frame}
+\begin{frame}{图示反向传播}
+\begin{center}
 
+\begin{tikzpicture}[
+    node distance=1.2cm,
+    every node/.style={align=center},
+    op/.style={circle, draw, minimum size=0.7cm, inner sep=0pt, fill=blue!10, font=\small},
+    input/.style={inner sep=0pt, font=\small},
+    fwdarrow/.style={-Stealth, thick, blue},
+    bkarrow/.style={-Stealth, thick, red, dashed},
+    label/.style={font=\footnotesize}
+]
+
+% 输入节点
+\node[input] (x) at (-3.2, 0.65) {$x = 3.0$};
+\node[input] (w) at (-3.2, -0.65) {$w = 2.0$};
+\node[input] (b) at (0.4, -1.2) {$b = 1.0$};
+
+% 操作节点
+\node[op] (mul) at (-0.8, 0) {$\times$};
+\node[op, right=1.6cm of mul] (add) {$+$};
+\node[op, right=1.6cm of add] (square) {Square};
+\node[input, right=0.5cm of square] (loss) {$L = 49$};
+
+% 前向传播
+\draw[fwdarrow] (x) -- (mul);
+\draw[fwdarrow] (w) -- (mul);
+\draw[fwdarrow] (mul) -- node[below, label] {$A = 6.0$} (add);
+\draw[fwdarrow] (b) -- (add);
+\draw[fwdarrow] (add) -- node[below, label] {$y = 7.0$} (square);
+\draw[fwdarrow] (square) -- (loss);
+
+% 反向传播
+% ①: ∂L/∂y
+\draw[bkarrow] (square) to[out=170,in=10] node[above, label] {\textcircled{\tiny 1}: $\frac{\partial L}{\partial y} = 14$} (add);
+
+% ②: ∂L/∂A
+\draw[bkarrow] (add) to[out=170,in=10] node[above, label] {\textcircled{\tiny 2}: $\frac{\partial L}{\partial A} = 14$} (mul);
+
+% ③: ∂L/∂b
+\draw[bkarrow] (add) to[out=-90,in=0] node[right, label] {\textcircled{\tiny 3}: $\frac{\partial L}{\partial b} = 14$} (b);
+
+% ④: ∂L/∂w
+\draw[bkarrow] (mul) to[out=-150,in=0] node[below, label] {\textcircled{\tiny 4}: $\frac{\partial L}{\partial w} = 42$} (w);
+
+% ⑤: ∂L/∂x
+\draw[bkarrow] (mul) to[out=150,in=0] node[above, label] {\textcircled{\tiny 5}: $\frac{\partial L}{\partial x} = 28$} (x);
+
+% 梯度值标注
+\node[below=0.2cm of x, color=red, font=\tiny] {$\nabla_x = 28.0$};
+\node[below=0.2cm of w, color=red, font=\tiny] {$\nabla_w = 42.0$};
+\node[below=0.2cm of b, color=red, font=\tiny] {$\nabla_b = 14.0$};
+
+\end{tikzpicture}
+
+\vspace{0.5cm} % 添加一些空间以分隔上下两部分
+\begin{minipage}{\textwidth}
+\begin{itemize}
+    \item \textbf{Step ①:} $\frac{\partial L}{\partial y} = 14$
+    \item \textbf{Step ②:} $\frac{\partial L}{\partial A} = \frac{\partial L}{\partial y} = 14$
+    \item \textbf{Step ③:} $\frac{\partial L}{\partial b} = \frac{\partial L}{\partial A} = 14$
+    \item \textbf{Step ④:} $\frac{\partial L}{\partial w} = \frac{\partial L}{\partial A} \cdot x = 14 \times 3.0 = 42$
+    \item \textbf{Step ⑤:} $\frac{\partial L}{\partial x} = \frac{\partial L}{\partial A} \cdot w = 14 \times 2.0 = 28$
+\end{itemize}
+\end{minipage}
+
+\end{center}
+\end{frame}
 % ==================================================
 \section{PyTorch autograd}
 \begin{frame}[fragile]{PyTorch autograd基础}
@@ -260,6 +392,42 @@ print(b.grad)  # db = 14.0
 \item 梯度累积在叶节点的\texttt{.grad}属性中
 \end{itemize}
 \end{block}
+\end{frame}
+
+\begin{frame}{PyTorch自动微分框架}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    block/.style={rectangle, draw, fill=blue!20, text width=3cm, text centered, rounded corners, minimum height=1cm},
+    data/.style={rectangle, draw, fill=green!20, text width=2.5cm, text centered, rounded corners, minimum height=0.8cm},
+    arrow/.style={thick,->,>=stealth},
+    label/.style={font=\footnotesize}
+]
+% 数据层
+\node[data] (tensor) {张量数据};
+\node[data, right of=tensor, node distance=4cm] (grad) {损失计算};
+
+% 计算层
+\node[block, below of=tensor] (forward) {前向计算和计算图构建};
+\node[block, right of=forward, node distance=4cm] (backward) {反向传播};
+
+% 输出层
+\node[data, below of=forward] (output) {输出结果};
+\node[data, below of=backward] (params) {参数更新};
+
+% 连接线
+\draw[arrow] (tensor) -- (forward);
+\draw[arrow] (forward) -- (output);
+\draw[arrow] (grad) -- (backward);
+\draw[arrow] (backward) -- (params);
+\draw[arrow, dashed] (params.west) to(tensor.east);
+\draw[arrow, dashed] (output.east) to(grad.west);
+
+% 标签
+\node[above of=tensor, node distance=0.8cm, label] {数据流};
+\node[above of=grad, node distance=0.8cm, label] {梯度流};
+\end{tikzpicture}
+\end{center}
 \end{frame}
 
 % ==================================================
@@ -360,15 +528,41 @@ model.fc.requires_grad = True  #Two methods are similar,the above one is preferr
 \end{itemize}
 \end{block}
 \end{frame}
-
+% ==================================================
 \begin{frame}[fragile]{训练循环示例}
 \begin{block}{标准训练步骤}
-\begin{itemize}
-\item 清零梯度
-\item 前向传播
-\item 计算损失
-\item 反向传播
-\item 更新参数
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    mystep/.style={
+        rectangle, 
+        rounded corners, 
+        minimum width=1.5cm, 
+        minimum height=0.9cm,
+        draw=blue,
+        fill=blue!10,
+        font=\small
+    },
+    myarrow/.style={
+        ->,
+        thick, 
+        blue
+    }
+]
+\node (step1) [mystep] {清零梯度};
+\node (step2) [mystep, right=of step1] {前向传播};
+\node (step3) [mystep, right=of step2] {计算损失};
+\node (step4) [mystep, right=of step3] {反向传播};
+\node (step5) [mystep, right=of step4] {更新参数};
+
+\draw [myarrow] (step1) -- (step2);
+\draw [myarrow] (step2) -- (step3);
+\draw [myarrow] (step3) -- (step4);
+\draw [myarrow] (step4) -- (step5);
+\draw [myarrow, bend right=15] (step5.north) to node[below, font=\tiny] {重复} (step1.north);
+\end{tikzpicture}
+
+\vspace{0.3cm}
 \begin{lstlisting}[language=Python]
 for epoch in range(epochs):
     for batch in dataloader:
@@ -378,10 +572,8 @@ for epoch in range(epochs):
         loss.backward()
         optimizer.step()
 \end{lstlisting}
-\end{itemize}
 \end{block}
 \end{frame}
-
 % ==================================================
 \begin{frame}[fragile]{自定义梯度函数}
 \begin{block}{torch.autograd.Function}
