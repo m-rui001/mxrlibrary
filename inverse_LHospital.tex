@@ -1,0 +1,87 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage[UTF8]{ctex}
+\begin{document}
+\newtheorem{theorem}{定理}
+\begin{theorem}
+设$f\in C[0,+\infty)\cap D^2(0,+\infty)$且存在常数$C>0$使得$f''(x)\leq\frac{C}{x^2}$对所有$x>0$成立。则有
+$$
+\lim_{x\to 0^+} xf'(x)=0
+$$
+\end{theorem}
+
+\begin{proof}
+对任意固定的$\eta \in (0,1)$和$x>0$，我们使用Taylor中值定理。
+
+首先，在区间$(x-\eta x,x)$上，存在$\theta \in (x-\eta x,x)$使得：
+\[
+f(x-\eta x)=f(x)-\eta xf'(x)+(\eta x)^2\frac{f''(\theta)}{2}
+\]
+
+从中解出$f'(x)$：
+\[
+f'(x)=\frac{f(x)-f(x-\eta x)}{\eta x}+(\eta x)\frac{f''(\theta)}{2}
+\]
+
+由于$f''(\theta) \leq \frac{C}{\theta^2}$且$\theta > x-\eta x = x(1-\eta)$，有$\theta^2 > x^2(1-\eta)^2$，因此：
+\[
+f'(x) \leq \frac{f(x)-f(x-\eta x)}{\eta x}+(\eta x)\frac{C}{2\theta^2}
+\]
+
+两边乘以$x$：
+\begin{align*}
+xf'(x) &\leq \frac{f(x)-f(x-\eta x)}{\eta} + (\eta x^2)\frac{C}{2\theta^2} \\
+&\leq \frac{f(x)-f(x-\eta x)}{\eta} + \frac{C\eta}{2} \cdot \frac{1}{(1-\eta)^2} \\
+&= \frac{f(x)-f(x-\eta x)}{\eta} + \frac{C\eta}{2(1-\eta)^2}
+\end{align*}
+
+其次，在区间$(x,x+\eta x)$上，存在$\vartheta \in (x,x+\eta x)$使得：
+\[
+f(x+\eta x)=f(x)+\eta xf'(x)+(\eta x)^2\frac{f''(\vartheta)}{2}
+\]
+
+从中解出$f'(x)$：
+\[
+f'(x)=\frac{f(x+\eta x)-f(x)}{\eta x}-(\eta x)\frac{f''(\vartheta)}{2}
+\]
+
+由于$f''(\vartheta) \leq \frac{C}{\vartheta^2}$且$\vartheta > x$，有$\vartheta^2 > x^2$，因此：
+\[
+f'(x) \geq \frac{f(x+\eta x)-f(x)}{\eta x}-(\eta x)\frac{C}{2x^2}
+\]
+
+两边乘以$x$：
+\[
+xf'(x) \geq \frac{f(x+\eta x)-f(x)}{\eta}-\frac{C\eta}{2}
+\]
+
+综合上述两个不等式，我们得到：
+\[
+\frac{f(x+\eta x)-f(x)}{\eta}-\frac{C\eta}{2} \leq xf'(x) \leq \frac{f(x)-f(x-\eta x)}{\eta}+\frac{C\eta}{2(1-\eta)^2}
+\]
+
+现在考虑极限行为。由于$f \in C[0,+\infty)$，当$x \to 0^+$时：
+\[
+\lim_{x\to 0^+} \frac{f(x+\eta x)-f(x)}{\eta} = 0, \quad
+\lim_{x\to 0^+} \frac{f(x)-f(x-\eta x)}{\eta} = 0
+\]
+
+设$L = \liminf_{x\to 0^+} xf'(x)$和$M = \limsup_{x\to 0^+} xf'(x)$。由上述不等式，取$x \to 0^+$，我们有：
+\[
+-\frac{C\eta}{2} \leq L \leq M \leq \frac{C\eta}{2(1-\eta)^2}
+\]
+
+由于这对任意$\eta \in (0,1)$都成立，令$\eta \to 0^+$，得到：
+\[
+0 \leq L \leq M \leq 0
+\]
+
+因此$L = M = 0$，即$\lim_{x\to 0^+} xf'(x) = 0$。
+\end{proof}
+
+为什么我们的条件看起来不是对称的呢？事实上，对于$f''(x)\geq- \frac{C}{x^2}$的情况，使用几乎完全相同的方法也能得到相同的结论。这表明，\textbf{无论是上界还是下界的二阶导数控制，都足以确保}$\lim_{x\to 0^+} xf'(x)=0$。\\
+这个证明的深刻之处在于：\textbf{单侧控制足以扼杀震荡}。表面看，条件\\$f''(x)\leq\frac{C}{x^2}$只限制了$f$向上弯曲的程度，似乎允许$f$自由地向下剧烈震荡。但实际并非如此。函数要产生高频震荡（如振幅不衰减的振荡），其二阶导数必须在正负两个方向都具有足够大的振幅，以完成完整的波峰-波谷-波峰循环。单侧限制破坏了这种对称性，使震荡无法持续。
+
+函数$f(x)=x\sin(1/x)$（定义$f(0)=0$）是一个绝佳的反例：它在$x\to0^+$时连续，但$xf'(x)=x\sin(1/x)-\cos(1/x)$不趋于0。计算可得其二阶导数的主项为$f''(x)\sim\cos(1/x)/x^3$，其振幅以$1/x^3$增长，正负交替，\textbf{突破了}无论是上界还是下界的二阶导数控制。这正说明$\frac{C}{x^2}$是临界尺度——弱于此尺度的控制无法抑制震荡，而达到此尺度的单侧控制已足以确保$xf'(x)\to0$。
+
+\end{document}
