@@ -1,4 +1,5 @@
 #import "ori.typ":*
+#import "@preview/cetz:0.4.2": canvas, draw
 #set heading(numbering:numbly("{1:一}、",default:"1.1  "))
 #show: ori.with(
   title: "坟头草的数学笔记",
@@ -13,9 +14,9 @@
 #v(20em)
 #align(center)[
   #set text(size: 24pt, weight: "bold")
-  面对我们的骨灰，高尚的人们将洒下热泪.
+  面对我们的骨灰，高尚的人们将洒下热泪。
 ]
-#align(right)[  #set text(size: 18pt)
+#align(right)[  #set text(size: 22pt)
   —— 卡尔·马克思  《青年选择职业的考虑》]
 #pagebreak()
 = 数学分析
@@ -183,8 +184,8 @@ $
   (2n)!!/(2n-1)!! ~ sqrt(pi n) quad (n -> +oo)
 $
 ]
-=== Taylor定理
-#idea[伸缩步长和三明治思想]
+== Taylor定理
+#idea[伸缩步长,两边夹方法]
 #example[
 设 $f in C[0, +infinity) inter D^2(0, +infinity)$ 且存在常数 $C > 0$ 使得 $f''(x) <= C/x^2$ 对所有 $x > 0$ 成立.则有
 $
@@ -265,7 +266,33 @@ $
 
 函数 $f(x) = x sin(1/x)$（定义 $f(0) = 0$）是一个绝佳的反例：它在 $x -> 0^+$ 时连续，但 $x f'(x) = x sin(1/x) - cos(1/x)$ 不趋于 0.计算可得其二阶导数的主项为 $f''(x) ~ cos(1/x)/x^3$，其振幅以 $1/x^3$ 增长，正负交替，*突破了*无论是上界还是下界的二阶导数控制.这正说明 $C/x^2$ 是临界尺度——弱于此尺度的控制无法抑制震荡，而达到此尺度的单侧控制已足以确保 $x f'(x) -> 0$.
 ]
-== 一致收敛
+
+#example[
+  设$Omega subset bb(R)^m$是凸域，$
+  f in C^2(Omega,bb(R))$且$f(bold(x))>= f(bold(x)_0) + text("D")f(bold(x)_0) quad (forall bold(x),bold(x)_0 in Omega)
+$，
+求证：$f$的Hessian矩阵$H_f$在$Omega$上半正定.
+]
+#proof[
+$
+  f(bold(x))=f(bold(x)_0 + (bold(x)-bold(x)_0))\
+  =f(bold(x)_0) + text("D")f(bold(x)_0)(bold(x)-bold(x)_0) + 1/2 (bold(x)-bold(x)_0)^text(T) H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2)
+$
+由题设条件$f(bold(x))>= f(bold(x)_0) + text("D")f(bold(x)_0)(bold(x)-bold(x)_0) quad (forall bold(x),bold(x)_0 in Omega)$，可得
+$
+  1/2 (bold(x)-bold(x)_0)^text(T) H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2) >=0
+$
+但是这里没有消去$o$项，我们陷入了困难.
+
+为了解决这个问题，我们引入动态步长的方法，即令$bold(x)=bold(x)_0 + t bold(h),t>0$，其中$bold(h)$是任意固定的向量.代入上式，得到
+$
+  1/2 t^2 bold(h)^text(T) H_f (bold(x)_0) bold(h) + o(t^2 |bold(h)|^2) >=0\
+  bold(h)^(text("T")) H_f (bold(x)_0) bold(h) + (o(t^2 |bold(h)|^2))/t^2 \
+  =>^(t->0^+) bold(h)^text(T) H_f (bold(x)_0) bold(h) >=0\
+$
+]
+== 一致收敛，一致连续
+=== 一致收敛
 #theorem[
   $f(x)$在$(0,+infinity)$上连续，那么$integral_0^infinity e^(-alpha x)f(x)dif x$关于$alpha$在$(0,+infinity)$上一致收敛$<==>integral_0^infinity f(x) dif x$收敛
   ]
@@ -274,10 +301,8 @@ $
 由一致收敛的Cauchy收敛准则可知：
 $forall epsilon >0 , exists A>0 , s.t. forall N_2>N_1>A text("和任意") forall alpha >0 , abs(integral_(N_1)^(N_2) e^(-alpha x)f(x) dif x) < epsilon$
 
-$
-forall x in [N_1,N_2], lim_(alpha->0^+)sup_x abs(e^(-alpha x)-1) = lim_(alpha->0^+)(1-e^(-alpha N_1)) =0
-$
-$e^(-alpha x)$在$x in [N_1,N_2]$上关于$alpha->0^+$一致收敛于1，所以
+$F(alpha)=integral_(N_1)^(N_2) e^(-alpha x)f(x) dif x$是连续函数，因此:
+
 $
 lim_(alpha->0^+) abs(integral_(N_1)^(N_2) e^(-alpha x)f(x) dif x) =abs(integral_(N_1)^(N_2) f(x) dif x)<= epsilon
 $
@@ -285,8 +310,147 @@ $
 
 类似的，对$forall epsilon >0,forall delta>0,text("考虑任意的"),n_1,n_2 in (0,delta),n_2>n_1$，使用一致收敛的Cauchy收敛准则，$lim_(alpha->0^+) |integral_(n_1)^(n_2) e^(-alpha x)f(x) dif x|=|integral_(n_1)^(n_2) f(x) dif x|<=epsilon$,可以证明$integral_0^1 f(x) dif x$收敛. 
 
-这里第二段似乎太重了.
-== 重积分
+#example[
+  $
+    sum_(n=1)^infinity sin(n x)/n,
+  $在$[0,2 pi]$不一致收敛
+]
+#proof[
+  1、$sum_(n=1)^infinity sin(n x)/n->$Sawtooth,即级数在$[0,2 pi]$上点态收敛于$f(x)= (pi - x)/2$，但在$x=0,2 pi$处Sawtooth不连续，所以不一致收敛.
+  
+  2、假设一致收敛，对$epsilon=sin(1)dot ln 2,exists N>0,forall x in [0,2 pi]$
+  $
+    abs(sum_(n=N)^(2N) sin(n x)/n ) < epsilon
+  $
+  取$x=1/N$，则
+  $
+    abs(sum_(n=N)^(2N) sin(n/N)/n) >= sin 1 dot sum_(n=N)^(2N)1/n\
+    > sin 1 dot integral_N^(2N) 1/x dif x = sin 1 dot ln 2 = epsilon
+  $
+]
+#remark[以上两题都用了Cauchy收敛准则,并且都体现了一定的换序思想.]
+=== 一致连续
+#example[
+  设 $f:[1,infinity)->bb(R)$满足对某个$L>0$成立
+  $
+    |f(x_1)-f(x_2)|<= L|x_1 - x_2| quad (forall x_1,x_2 in [1,+infinity))
+  $
+  证明: $f(x)/(x+ln(1+1/x))$在$[1,+infinity)$上一致连续.
+]
+#proof[
+  $ h(x) eq.delta x+ln(1+ 1/x)\
+    forall x>=1, quad x< h(x) 
+  $
+  并且
+  $
+    0<h'(x)= 1 - 1/(x^2 + x)<1 
+  $
+  $
+    abs(f(x)-f(1))<=L abs(x-1)=L |x-1|\
+    => abs(f(x))<= L |x-1| + abs(f(1))<= L x + abs(f(1))\
+  $
+  $
+    forall x_1 ,x_2 in [1,+infinity)\ 
+    &abs(f(x_1)/h(x_1) - f(x_2)/h(x_2))\
+    &= abs((f(x_1) h(x_2) - f(x_2) h(x_1))/(h(x_1) h(x_2)))\
+    &= abs([f(x_1) - f(x_2)] h(x_2) + f(x_2) [h(x_2) - h(x_1)])/(h(x_1) h(x_2))\
+    &<= L abs(x_2- x_1)/h(x_1) + |f(x_2)|abs((h(x_2) - h(x_1)))/(h(x_1) h(x_2))\
+    &(text("利用")    0<1/h(x)<1/x<=1 )\
+    &<= L abs(x_2- x_1)+ abs(f(x_2))/x_2 abs(integral_(x_1)^(x_2) h'(x) dif x)\
+    &<= (L+(L x_2 + abs(f(1)))/ x_2) abs(x_2 - x_1)\
+    &<= (2L + abs(f(1))) abs(x_2 - x_1)\
+  $
+
+]
+
+#pagebreak()
+== Abel变换
+#align(center)[
+#canvas({
+  import draw: *
+  let size=10pt
+  let x1=4
+  let x2=8
+  let y1=3
+  let y2=5.5
+  let x3=15
+  let y3=8
+  rect((0,0),(x1,y1),fill:yellow,name:"under1")
+  rect((x1,0),(x2,y2),fill:purple,name:"under2")
+  rect((x2,0),(x3,y3),fill:purple,name:"under3")
+  rect((0,y1),(x1,y2),fill:yellow,name:"over1")
+  rect((0,y2),(x2,y3),fill:blue,name:"over2")
+set-style(
+    mark:(
+        symbol:none,
+        end:"straight"
+    )
+)
+line((0,0),(16,0))
+line((0,0),(0,9))
+content((0,-0.35),[#box[#set text(20pt);$o$]])
+content((x1,-0.35),[#box[#set text(20pt);$b_1$]])
+content((x2,-0.35),[#box[#set text(20pt);$b_2$]])
+content((x3,-0.35),[#box[#set text(20pt);$b_3$]])
+content((-0.35,y1),[#box[#set text(20pt);$a_1$]])
+content((-0.35,y2),[#box[#set text(20pt);$a_2$]])
+content((-0.35,y3),[#box[#set text(20pt);$a_3$]])
+content("under1",[#box[#set text(20pt);$a_1 b_1$]])
+content("under2",[#box[#set text(20pt);$a_2 (b_2- b_1)$]])
+content("under3",[#box[#set text(20pt);$a_3 (b_3 - b_2)$]])
+content("over1",[#box[#set text(20pt);$b_1 (a_2 - a_1)$]])
+content("over2",[#box[#set text(20pt);$b_2 (a_3 - a_2)$]])
+})
+]
+如图，在公式
+  $
+  sum_(n=p)^(q)a_n (b_n-b_(n-1))=a_q b_q - a_p b_(p-1)- sum_(n=p)^(q-1)(a_(n+1)-a_n) b_n
+  $
+中令$p=2,q=3$,那么
+
+#align(center)[
+  #set text(size:20pt)
+  #text($sum_(n=2)^(3)a_n (b_n-b_(n-1))$,fill:purple)=$underbrace(a_3 b_3,"全部面积")$-#text($a_2b_1$,fill:yellow)-#text($b_2(a_3 - a_2)$,fill:blue)
+]
+
+#pagebreak()
+== 换序法求积分
+#example[
+设$f(x)=integral_0^x integral_t^x e^(-s^2)dif s dif t$,求$f(x)$]
+$e^(-s^2)$的原函数不能被初等函数表示，考虑用换序法：
+$
+  f(x)=integral_0^x integral_0^s e^(-s^2) dif t dif s= integral_0^x t e^(-t^2) dif t= -1/2 e^(-x^2)+1/2
+$
+或者，我们另辟蹊径:
+设$G(x,t)=integral_t^x e^(-s^2)dif s $,则$f(x)=integral_0^x G(x,t) dif t$，由Leibniz公式可得:
+$
+  f'(x)= G(x,x) +integral_0^x (partial G)/( partial x )dif t =0 + integral_0^x e^(-x^2) dif t = x e^(-x^2)\
+  f(0)=0\
+  f(x)=integral_0^x t e^(-t^2) dif t = -1/2 e^(-x^2)+1/2
+$
+#example[利用求导的方法，计算
+$
+  sum_(k=0)^infinity cos(k x) /k^2
+$
+并令$x=0$，求出$sum_(k=1)^infinity 1/k^2$
+]
+#tip-box[
+  解决这个问题需要的必要知识见@SawtoothFunction
+]
+#example[
+  $
+  integral_0^1 (ln x)/(1-x) dif x
+  $
+]
+$
+  integral_0^1 (ln x)/(1-x) dif x = integral_0^1 ln x (sum_(n=0)^infinity x^n) dif x = sum_(n=0)^infinity integral_0^1 x^n ln x dif x \
+  = sum_(n=0)^infinity [x^(n+1)/(n+1) ln x - x^(n+1)/(n+1)^2]_0^1 = - sum_(n=1)^infinity 1/n^2 = - pi^2/6
+$
+其中 $sum_0^infinity x^n ln x$在(0,1)上内闭一致收敛.
+$forall delta in (0,1/2)$,当$x in [delta,1-delta]$时,
+由Abel判别法:
+$sum_0^infinity x^n$显然一致收敛，而$ln x$在$[delta,1-delta]$上与$n$无关，可认为单调一致有界，因此$sum_0^infinity x^n ln x$在$[delta,1-delta]$上一致收敛,即在$(0,1)$内闭一致收敛.
+#remark[本题中级数展开的方法似乎还有推广空间,展开为Fourier级数行不行?]
 #idea[方型区域上单独的$x$和$y$可以互换]
 #example[设$D=[0,1]times[0,1],f text("和") g$都是$[0,1]$上的连续函数，求证：
 $
@@ -481,12 +645,21 @@ $
 #align(center)[
   #v(20em)
   #set text(size: 19pt, weight: "bold")
-  卡拉玛佐夫即将死去，卡拉玛佐夫就要自杀.\ 人们会记住这一天的，\ 必须对得起他这颗诗人的灵魂,\ 也不枉他把自己的生命蜡烛是从两头儿一起点燃烧光的.
+  卡拉玛佐夫即将死去，卡拉玛佐夫就要自杀。\ 人们会记住这一天的，\ 必须对得起他这颗诗人的灵魂,\ 也不枉他把自己的生命蜡烛是从两头儿一起点燃烧光的。
 ]
 #align(right)[  #set text(size: 18pt)
   ——陀思妥耶夫斯基   《卡拉马佐夫兄弟》]
 #pagebreak()
 = 傅里叶分析
+== 基础知识
+$f:bb(R)->bb(R)$为$T$周期函数,$omega_0= (2 pi)/T$,它的Fourier级数为:
+$
+  c_0 + sum_(n=1)^infinity 2 abs(c_n) cos(n omega_0 x + arg(c_n))
+$
+其中
+$
+  c_n=1/T integral_0^T f(x) e^(-i n omega_0 x) dif x
+$
 == 傅里叶变换求积分
 #example[
   计算积分 $
@@ -499,7 +672,7 @@ $
 == 傅里叶级数的收敛
 #theorem[$
   sum_(k=1)^infinity sin(k t)/k =cases((pi -  t)/2 quad (0<t<2 pi) , 0 quad (t=0))
-$]
+$]<SawtoothFunction>
 #proof[
   Sawtooth 函数可以 Dirichlet 核的积分得到:
   $
@@ -622,69 +795,6 @@ $
   ——王羲之   《兰亭集序》]
 #pagebreak()
 = 概率论与数理统计
-== 常见分布及其性质
-
-#theorem[
-$X_1,dots,X_n stretch(~)^text("iid") N(mu,sigma^2)$,求证
-$
-  ((n-1) s^2)/sigma^2=1/sigma^2 sum_(i=1)^n (X_i-overline(X))^2~chi^2(n-1)
-$
-]
-令
-$
-  Z_i=(X_i-mu)/sigma => Z_i ~N(0,1),text("独立")
-$
-那么
-$
-overline(Z)=1/n sum_(i=1)^n Z_i
-$
-且
-$
-  X_i-overline(X)=(X_i-mu)-(overline(X)-mu)=sigma (Z_i-overline(Z))
-$
-所以
-$
-  (X_i-overline(X)^2)=sigma^2(Z_i-overline(Z))^2\
-  sum_(i=1)^n (X_i-overline(X))^2=sigma^2 sum_(i=1)^n (Z_i-overline(Z))^2\
-  => 1/sigma^2 sum_(i=1)^n (X_i-overline(X))^2 =sum_(i=1)^n (Z_i-overline(Z))^2
-$
-又因为
-$
-  sum_(i=1)^n (Z_i-overline(Z))^2= sum_(i=1)^n Z_i^2 - n overline(Z)^2
-$
-我们知道：
-$
-  sum_(i=1)^n Z_i^2 ~ chi^2(n)
-$
-又有
-$
-  overline(Z) ~ N(0,1/n)\
-  n overline(Z)^2=(sqrt(n) overline(Z))^2~chi^2(1)
-$
-由于正态分布样本均值 $overline(Z)$ 和样本偏差 $Z_i - overline(Z)$ 独立,那么$n overline(Z)^2$ 和 $sum_(i=1)^n (Z_i-overline(Z))^2$ 独立.
-由卡方分布的可加性,我们有：
-$
-  sum_(i=1)^n (Z_i-overline(Z))^2 ~ chi^2(n-1)
-$
-
-#definition("t分布")[
-
-若$Z~N(0,1)$,$chi^2(k)$相互独立，则
-$
-  T=Z/sqrt(chi^2 (k)\/k) ~ t(k)
-$
-]
-如果$X_1,X_2,dots,X_n stretch(~)^text("iid") N(mu,sigma^2)$, 
-$sigma$未知，样本标准差为 $s$ ,Gosset发现统计量
-$
-  t=(overline(X)-mu)/(s\/sqrt(n))
-$
-不服从正态分布，而是服从t分布:
-$
-  t=((overline(X)-mu)\/(sigma\/sqrt(n)))/sqrt((n-1)s^2\/(n-1)sigma^2)=Z/(sqrt(chi^2(n-1)\/(n-1)))~t(n-1)
-$
-这里用到了正态分布的样本均值与样本方差独立性.
-
 == 大数定律和中心极限定理
 #idea[用大数定律证明依概率收敛]
 #example[
@@ -794,9 +904,10 @@ $
 #align(center)[
   #v(20em)
   #set text(size: 25pt, weight: "bold")
-我终将遗忘梦境中的那些路径，山峦与田野，\ 遗忘那些永远不能实现的梦.
+我终将遗忘梦境中的那些路径，山峦与田野，\
+遗忘那些永远不能实现的梦。
 ]
-#align(right)[  #set text(size: 18pt)
+#align(right)[  #set text(size: 22pt)
   ——马塞尔·普鲁斯特   《追忆似水年华》]
 #pagebreak()
 = 微分方程
@@ -804,11 +915,11 @@ $
 #align(center)[
   #v(20em)
   #set text(size:28pt)
-  朝搴阰之木兰兮，夕揽洲之宿莽.
+  朝搴阰之木兰兮，夕揽洲之宿莽。
 
-  日月忽其不淹兮，春与秋其代序.
+  日月忽其不淹兮，春与秋其代序。
 ]
-#align(right)[  #set text(size: 18pt)
+#align(right)[  #set text(size: 22pt)
   ——屈原   《离骚》]
 #pagebreak()
 = 抽象代数
@@ -816,17 +927,46 @@ $
 #align(center)[
   #v(20em)
   #set text(size:28pt, weight: "bold")
- 桂棹兮兰桨，击空明兮溯流光.\ 渺渺兮予怀，望美人兮天一方.
+ 桂棹兮兰桨，击空明兮溯流光.\ 渺渺兮予怀，望美人兮天一方。
  ]
- #align(right)[  #set text(size: 18pt)
+ #align(right)[  #set text(size: 22pt)
  ——苏轼   《赤壁赋》]
-
-
+#pagebreak()
+= 统计学习
 #pagebreak()
 #align(center)[
   #v(20em)
   #set text(size:28pt, weight: "bold")
 悟已往之不谏，知来者之可追。
  ]
- #align(right)[  #set text(size: 18pt)
+ #align(right)[  #set text(size: 22pt)
  ——陶渊明   《归去来兮辞》]
+
+
+#pagebreak()
+#align(center)[
+  #v(20em)
+  #set text(size:28pt, weight: "bold")
+ 心无挂碍，无有恐怖，\ 远离颠倒梦想，究竟涅磐。 
+ ]
+ #align(right)[  #set text(size: 22pt)
+ ——   《心经》]
+
+#pagebreak()
+#align(center)[
+  #v(20em)
+  #set text(size:25pt, weight: "bold")
+蜀道之难，难于上青天，使人听此凋朱颜！
+
+连峰去天不盈尺，枯松倒挂倚绝壁。
+
+飞湍瀑流争喧豗，砯崖转石万壑雷。]
+#align(right)[  #set text(size: 22pt)
+  ——李白   《蜀道难》]
+#pagebreak()
+#align(center)[
+#v(20em)
+#set text(size:25pt, weight: "bold")
+发愤忘食，乐以忘忧，不知老之将至云尔。]
+#align(right)[  #set text(size: 22pt)
+  ——孔子   《论语》]
