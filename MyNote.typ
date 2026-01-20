@@ -276,19 +276,19 @@ $，
 #proof[
 $
   f(bold(x))=f(bold(x)_0 + (bold(x)-bold(x)_0))\
-  =f(bold(x)_0) + text("D")f(bold(x)_0)(bold(x)-bold(x)_0) + 1/2 (bold(x)-bold(x)_0)^text(T) H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2)
+  =f(bold(x)_0) + text("D")f(bold(x)_0)(bold(x)-bold(x)_0) + 1/2 (bold(x)-bold(x)_0)^ top H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2)
 $
 由题设条件$f(bold(x))>= f(bold(x)_0) + text("D")f(bold(x)_0)(bold(x)-bold(x)_0) quad (forall bold(x),bold(x)_0 in Omega)$，可得
 $
-  1/2 (bold(x)-bold(x)_0)^text(T) H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2) >=0
+  1/2 (bold(x)-bold(x)_0)^ top H_f (bold(x)_0)(bold(x)-bold(x)_0) + o(|bold(x)-bold(x)_0|^2) >=0
 $
 但是这里没有消去$o$项，我们陷入了困难.
 
 为了解决这个问题，我们引入动态步长的方法，即令$bold(x)=bold(x)_0 + t bold(h),t>0$，其中$bold(h)$是任意固定的向量.代入上式，得到
 $
-  1/2 t^2 bold(h)^text(T) H_f (bold(x)_0) bold(h) + o(t^2 |bold(h)|^2) >=0\
-  bold(h)^(text("T")) H_f (bold(x)_0) bold(h) + (o(t^2 |bold(h)|^2))/t^2 \
-  =>^(t->0^+) bold(h)^text(T) H_f (bold(x)_0) bold(h) >=0\
+  1/2 t^2 bold(h)^ top H_f (bold(x)_0) bold(h) + o(t^2 |bold(h)|^2) >=0\
+  bold(h)^ top H_f (bold(x)_0) bold(h) + (o(t^2 |bold(h)|^2))/t^2 \
+  =>^(t->0^+) bold(h)^ top H_f (bold(x)_0) bold(h) >=0\
 $
 ]
 == 一致收敛，一致连续
@@ -571,8 +571,7 @@ $ f(s) < f(b) + m(s-b). $
 
 因此，假设不成立，从而对任意 $0 < a < b $ 必有 $f(a) < f(b) $，即 $f $ 在 $(0,+infinity) $ 上严格递增.]
 == 拓扑与度量空间
-=== 度量的构造
-#idea[使用凸函数和三角不等式]
+
 #theorem[设 $f: [0, +infinity) -> [0, +infinity) $ 是一个非负函数，满足：
 - $f(x) = 0 $ 当且仅当$x = 0$；
 - $f $ 是*严格上凸*函数.
@@ -589,7 +588,6 @@ $ f(a + b) - f(b) < f(a) quad => quad f(a + b) < f(a) + f(b)$.
 因此，
 $ d(x, y) = f(c) <= f(a + b) < f(a) + f(b) = d(x, z) + d(z, y) .
 $]
-#idea[使用已有度量和闵可夫斯基不等式]
 
 #theorem[
 设 $(X_1, d_1)$ 和 $(X_2, d_2)$ 为两个度量空间.在乘积空间 $X_1 times X_2$ 上定义函数
@@ -727,7 +725,7 @@ $
 $
   R_n (t_N)= 1/2 integral_0^t_N sin((n+1/2) x) / x dif x + 1/2 integral_0^t_N sin((n+1/2) x) (x - sin(x\/2))/(x sin(x\/2)) dif x - pi/2\
 $
-#highlight[哦，天哪！ $x-sin(x\/2)$是不好的，它的无穷小的阶数是1，但$x-2 sin(x\/2)$的无穷小阶数是3.我们希望把积分拆为两部分，一部分是主项，一部分是无穷小阶数高的项.]
+#important-box[但是 $x-sin(x\/2)$是不好的，它的无穷小的阶数是1，但$x-2 sin(x\/2)$的无穷小阶数是3.我们希望把积分拆为两部分，一部分是主项，一部分是无穷小阶数高的项.]
 $
   sin((n + 1/2) x)/sin(x/2)=sin((n+1/2)) dot 1/sin(x/2) \
   =sin((n+1/2)x) dot (sin(x\/2)/(x\/2) + 1- sin(x\/2)/(x\/2))/sin(x/2)\
@@ -784,6 +782,31 @@ $
   =>f_1(1)=0,f_2(1)=0
 $
 
+== 谱定理
+#idea[对于半正定对角矩阵成立的定理，由于谱定理，往往对一般的实对称矩阵也成立.]
+
+#example[
+  证明：二次型$f(x,y)=A x^2 + B x y +B y x +C y^2$在单位球面上的最大最小值分别为其对应实对称矩阵的最大和最小特征值.
+]
+#proof[
+  设$
+     Phi = mat(A , B ; B , C)
+   $
+   由谱定理，存在正交矩阵$Q$使得
+   $
+     Q^top Phi Q = mat(lambda_1 , 0 ; 0 , lambda_2)
+   $
+
+    其中$lambda_1 , lambda_2$为$Phi$的特征值.
+    令 $X = vec(x,y)$,则$f(x,y)= X^top Phi X$.
+    
+    令$Y = Q^top X$,则$X = Q Y$.
+    $ f(x,y)= Y^top (Q^top Phi Q) Y = Y^top mat(lambda_1 , 0 ; 0 , lambda_2) Y = lambda_1 y_1^2 + lambda_2 y_2^2 $
+
+    由于$Y^top Y =X^top Q Q^top X = X^top X=x_1^2 +x_2^2 =1，$
+    
+    此时题目结论是显然的.
+   ]
 ]
 #pagebreak()
 #align(center)[
@@ -899,6 +922,35 @@ $
   P(abs((S_n-bb(E)(S_n))/n) >= epsilon)<= sqrt(Var(S_n))/(n epsilon)
 $
 这比切比雪夫不等式更弱.
+]
+== 概率方法在其它领域的应用
+#example("中心极限定理在数学分析中的应用")[
+求证：
+$
+  lim_(n->infinity) (1+n+n^2/2! + dots + n^n/n!)e^(-n) = 1/2.
+$]
+#proof[
+  设$X_i ~ text("Poisson")(1),$独立同分布，
+  $
+    Y_n = sum_(i=1)^n X_i ~ text("Poisson")(n)
+  $
+  $Y_n$的分布率为：
+  $
+    P(Y_n =k)= e^(-n) n^k/k!, quad k=0,1,2,dots
+  $
+  $
+    P(Y_n <= n)=sum_(k=0)^n e^(-n) n^k/k! = (1+n+n^2/2! + dots + n^n/n!)e^(-n)
+  $
+  由中心极限定理知：
+  $
+    (Y_n-n)/sqrt(n) ->^d text("N")(0,1) , quad (n->infinity)
+  $
+  因此
+  $
+    1/2=P(Z<=0)=lim_(n->infinity) P((Y_n - n)/sqrt(n) <=0)=lim_(n->infinity) P(Y_n <= n)\
+    =lim_(n->infinity) (1+n+n^2/2! + dots + n^n/n!)e^(-n)
+  $
+  #tip-box[使用其它离散或连续可加分布，可以做更多尝试.]
 ]
 #pagebreak()
 #align(center)[
