@@ -1,0 +1,358 @@
+---
+title: "从R语言基础到生信分析"
+output: 
+  pdf_document:
+    latex_engine: xelatex  # 使用xelatex引擎以支持中文
+header-includes:
+  - \usepackage{ctex}      # 中文字体包
+---
+# 向量
+R 是一种以向量为基础的编程语言，几乎所有的数据类型都是向量，几乎所有的操作也是针对向量进行的。
+```{r}
+weight <- c(60, 72, 57, 90, 95)
+height <- c(1.65, 1.80, 1.75, 1.90, 1.85)
+bmi <- weight / (height ^ 2)
+bmi
+mean(bmi) # 计算平均值
+sd(bmi)   # 计算标准差
+```
+
+# Seq函数
+```{r}
+seq(from=1,to=5,by=0.5)
+```
+from参数表示起始值，to参数表示终止值，by参数表示步长。也可以省略这些参数。
+```{r}
+seq(1,5,len=10)
+```
+along.with 参数的意思是：生成一个与指定对象长度相同的序列。
+```{r}
+seq(1,5,along.with=1:3)
+```
+
+```{r}
+rep(c(1,3),5)
+```
+
+```{r}
+100==100
+200!=5
+```
+# 逻辑索引
+```{r}
+x <- c(50,60,70,80,90,100)
+index <- x > 80
+x[index]
+```
+也可以简化为:
+```{r}
+which(x>80)
+```
+
+# 字符串
+```{r}
+str <- "Hello R!"
+nchar(str)
+# 包括空格在内的字符数
+```
+
+# letters
+```{r}
+letter1 <- letters[1:5]
+which(letter1 >= "c")
+```
+# paste
+paste的含义是将多个字符串或对象合并成一个字符串。
+字符串:
+```{r}
+paste("Hello","R","!",sep=" ")
+```
+sep参数表示连接所用的分隔符，默认是空格。
+
+对象:
+```{r}
+x <- c("A","B","C")
+y <- 1:6
+paste(x,y,sep="-")
+```
+
+默认情况下，paste会将对应位置的元素进行合并，如果长度不一致，则会循环使用较短的对象。
+
+NA 是 R 语言中表示缺失值的特殊符号。
+```{r}
+x <- c(10,20,NA,40,50)
+is.na(x)
+sum(is.na(x))
+```
+is.na函数用于检测缺失值，返回一个逻辑向量，表示每个元素是否为NA。
+sum函数用于计算逻辑向量中TRUE的个数，即缺失值的数量。
+# 管道操作符
+R 4.1.0 版本引入了基础R的管道操作符 |> 。
+管道操作符 |> 可以将一个对象传递给下一个函数作为第一个参数。
+```{r}
+c(10,20,NA,40,50) |>
+  is.na() |>
+  sum()
+```
+还有一种写法是使用magrittr包中的管道操作符 %>%，实际上magrittr包中的管道操作符比基础R的管道操作符更早出现。
+```{r}
+library(magrittr)
+x <- c(10,20,NA,40,50) %>%
+  is.na() %>%
+  sum()
+print(x)
+```
+
+```{r}
+x <- c(10,20,NA,40,50)
+x[is.na(x)] <- 0
+x
+```
+这段代码将向量x中的缺失值NA替换为0。
+# 函数
+```{r}
+add <- function(a,b){
+  result <- a + b
+  return(result)
+}
+add(5,10)
+```
+add是函数名，function关键字用于定义函数，a和b是函数的参数，函数体内计算a和b的和，并通过return语句返回结果，花括号{}用于包裹函数体。
+也可以不显式使用return，函数会自动返回最后一行的结果。
+```{r}
+add <- function(a,b){
+  a + b
+}
+add(5,10)
+```
+
+```{r}
+y<-c(10,20,NA,40,50)
+first <- function(x){
+  x[1]
+}
+first(y)
+```
+# 匿名函数
+匿名函数是一种没有名称的函数，通常用于不必要要重复使用的场景。
+```{r}
+y <- c(10,20,NA,40,50)
+(\(x) x[1])(y)
+```
+\(x) x[1] 是 匿名函数的简洁写法，等价于 function(x) x[1]
+
+```{r}
+(\(x,y) x+y)(5,10)
+(\(x,y) x+y)(c(1,2,3),4:6)
+```
+
+# 矩阵
+```{r}
+# 创建一个 2行3列 的矩阵
+m1 <- matrix(1:6, nrow = 2, ncol = 3)
+#      [,1] [,2] [,3]
+# [1,]    1    3    5
+# [2,]    2    4    6
+
+# 按行填充（默认按列）
+m2 <- matrix(1:6, nrow = 2, byrow = TRUE)
+#      [,1] [,2] [,3]
+# [1,]    1    2    3
+# [2,]    4    5    6
+print((\(x,y) x+y)(m1,m2)) # 这等价于 m1 + m2
+View((\(x,y) x+y)(m1,m2))
+#用View查看复杂结果比print更清晰
+```
+
+矩阵乘法
+```{r}
+m1 * m2  # 对应元素相乘
+m1 %*% t(m2)  # m1 和 m2的转置的矩阵乘法，t()函数用于转置矩阵
+```
+
+factor函数用于创建因子变量，适用于分类数据。
+```{r}
+sizes <- c("S", "M", "L", "XL", "S", "M", "M")
+# 用 factor 整理一下
+size_factor <- factor(sizes)
+size_factor
+```
+# 因子变量
+```{r}
+rep(c(1,2),times=5)
+factor(x = rep(c(1,2), times=5),  # 输入：上面那个1,2重复5次的序列
+       levels = c(1,2),           # 数字1和2代表不同的类别
+       labels = c("male","female")) # 给1贴标签"male"，给2贴标签"female"
+```
+as.factor函数可以将其他类型转换为因子变量。
+```{r}
+grades <- c("A", "B", "A", "C", "B", "A")
+grade_factor <- as.factor(grades)
+print(grade_factor)
+# as.numeric函数可以将因子变量转换为数值型，但要注意，转换结果是按字母顺序编码的。
+mean(as.numeric(grade_factor))  # 按字母顺序A=1,B=2,C=3
+```
+
+```{r}
+grades <- c("A", "B", "A", "C", "B", "A")
+grade_factor_correct <- factor(grades,
+                              levels = c("F", "D", "C", "B", "A"),  # 从差到好
+                              ordered = TRUE)  #告诉R这是有序的
+print(grade_factor_correct)
+mean(as.numeric(grade_factor_correct))  # 按顺序F=1,D=2,C=3,B=4,A=5
+```
+
+levels函数可以查看因子有哪些类别，修改因子的类别标签
+```{r}
+levels(grade_factor_correct)
+levels(grade_factor_correct) <- c("Fail", "Pass", "Good", "Very Good", "Excellent")
+print(grade_factor_correct)
+```
+
+# 数据框
+R语言中的数据框（Data Frame）是一种核心数据结构，类似于Excel表格或SQL数据库中的表。它是数据处理和分析中最常用的对象之一。
+二维表格结构：行（观测）和列（变量）
+
+列可以包含不同类型的数据：数值型、字符型、逻辑型、因子型等
+
+每列长度必须相同（行数一致）
+
+列有名称，行可以有名称（但非必需）
+```{r}
+# 创建数据框
+df <- data.frame(
+  姓名 = c("张三", "李四", "王五"),
+  年龄 = c(25, 30, 28),
+  工资 = c(5000, 6000, 5500),
+  已婚 = c(TRUE, FALSE, TRUE)
+)
+
+# 查看数据框结构
+str(df)
+summary(df)
+# 查看前几行
+head(df)
+View(df)  # 以表格形式查看数据框
+```
+访问元素
+```{r}
+# 访问列
+df$姓名
+
+df[["年龄"]]
+```
+
+```{r}
+df[1, ]  # 第一行
+df[ , 2]  # 第二列
+```
+
+```{r}
+df[1, 2]  # 第一行第二列
+df[ , "工资"]  # 工资列
+df[, 1:2]  # 前两列
+```
+
+添加删除列
+```{r}
+df$部门 <- c("销售", "技术", "人事")  # 添加新列
+df$工资 <- NULL  # 删除工资列
+print(df)
+```
+
+筛选与子集
+```{r}
+print(df$年龄 < 30)
+class(df$年龄 < 30) # 类型为逻辑向量
+```
+
+```{r}
+df_young <- df[df$年龄 < 30, ]  # 年龄小于30的子集
+print(df_young)
+```
+
+```{r}
+subset(df, select = c(姓名, 年龄))
+# 这等价于
+df[, c("姓名", "年龄")]
+```
+
+挑选出年龄大于等于28且已婚的人员信息
+```{r}
+df$年龄 >= 28 & df$已婚 # & 表示逻辑与，规则是两个条件都满足时，结果为TRUE，否则为FALSE
+df_selected <- df[df$年龄 >= 28 & df$已婚 == TRUE, ]
+print(df_selected)
+```
+年龄大于等于28或已婚的人员信息
+```{r}
+df$年龄 >= 28 | df$已婚 # | 表示逻辑或，规则是两个条件有一个满足时，结果为TRUE，否则为FALSE
+df_selected <- df[df$年龄 >= 28 | df$已婚 == TRUE, ]
+print(df_selected)
+```
+
+利用管道操作符 |> 来实现相同的筛选
+```{r}
+df_selected <- df |>
+  subset(年龄 >= 28) |>
+  subset(已婚 == TRUE)
+print(df_selected)
+```
+
+# 列表
+R 语言中的列表（List）是一种非常灵活的数据结构，可以包含各种类型的对象，包括向量、矩阵、数据框，甚至其他列表。列表中的每个元素可以是不同类型和不同长度的数据。
+
+列表和数据框的区别：
+```{r}
+# list - 可以包含不同类型、不同长度的元素
+my_list <- list(
+  名字 = c("Alice", "Bob", "Charlie"),
+  年龄 = c(25, 30, 35),
+  成绩 = matrix(c(90, 85, 88, 92, 78, 84), nrow = 3, byrow = TRUE),
+  已婚 = c(TRUE, FALSE, TRUE)
+)
+
+# dataframe - 所有列必须有相同的行数
+my_df <- data.frame(
+  名字 = c("Alice", "Bob", "Charlie"),
+  年龄 = c(25, 30, 35),
+  已婚 = c(TRUE, FALSE, TRUE)
+)
+
+# list 访问
+my_list$名字       # 访问名为"名字"的元素
+my_list[["年龄"]]  # 另一种访问方式
+my_list[[1]]       # 按位置访问
+
+# dataframe 访问
+my_df$名字         # 获取名字列（向量）
+my_df[["年龄"]]    # 获取年龄列
+my_df[, "名字"]    # 获取名字列
+my_df[1, ]         # 获取第一行
+
+dim(my_list)        # 返回 NULL，list没有行列概念
+length(my_list)     # 返回4（有4个元素）
+
+dim(my_df)          # 返回 3 3（3行3列）
+nrow(my_df)         # 返回3
+ncol(my_df)         # 返回3
+```
+
+```{r}
+# 查看列表结构
+str(my_list)
+summary(my_list)
+```
+
+修改列表元素
+```{r}
+my_list$年龄 <- my_list$年龄 + 1  # 年龄加1
+print(my_list)
+# 添加新元素
+my_list$城市 <- c("北京", "上海", "广州")
+# 删除元素
+my_list$已婚 <- NULL
+print(my_list)
+```
+以上操作和数据框类似，但列表可以包含不同长度的元素。
+
+

@@ -93,7 +93,7 @@ $a_i$是模型权重(weights),设置$omega,phi$均为可学习参数，总特征
 
 总结，该问题无法有效解决的原因是低频部分二阶导后的振幅过小,单靠物理约束的损失函数无法有效优化低频部分的拟合.
 
-== 使用差分法代替自动微分
+== 有限差分法和自动微分
 由于在训练过程中,模型需要计算二阶导数,使用自动微分极大降低了训练效率,因此我们尝试使用有限差分法来近似计算二阶导数.
 
 我们认为神经网络的输出近似为真实解$u(x)$，我们使用七点中心差分计算二阶导数:
@@ -108,3 +108,81 @@ $abs((-h^6/560 u^((8))(xi)))<=1.1 times 10^(-5)$.
 这个误差远小于$u(x)$低频项$sin(0.1 pi x)$的振幅$(0.1 pi)^2approx 0.099$.
 
 实验显示，使用差分法后，模型的训练速度提升了一倍以上，Loss曲线和使用自动微分时基本一致，证明了有限差分法在该问题上的有效性。
+
+然而对于二维高频Poisson方程的求解，使用差分法计算二阶导数时，达到相同精度需要的配点数是$10000^2$.实验中用10000个配点的训练中，loss无法有效下降，因此使用自动微分更合适。
+
+下面我们解析以下代码:
+```python    
+def diff_operator(self, X, model):
+        x = X[:, 0:1].requires_grad_(True)
+        y = X[:, 1:2].requires_grad_(True)
+        u = model(torch.cat([x,y], dim=1))  # (N, 1) 
+        laplacian = torch.zeros_like(u)
+        for i in range(X.shape[1]):
+            grad_ui = torch.autograd.grad(
+                u, [x, y][i],
+                grad_outputs=torch.ones_like(u),
+                create_graph=True,
+                retain_graph=True
+            )[0]
+            hess_ii = torch.autograd.grad(
+                grad_ui, [x, y][i],
+                grad_outputs=torch.ones_like(grad_ui),
+                create_graph=True,retain_graph=True)[0]
+            laplacian += hess_ii
+        return -laplacian  
+```
+输入 $bold(X) in bb(R)^(N times 2)$，输出$bold(u) in bb(R)^(N times 1)$,$bold(u)$关于$bold(X)_k$的雅可比矩阵为
+
+$cal(J) in bb(R)^(N times 1 times N times 1)$,$cal(J)_(i,1,j,1)=(partial bold(u)^((i)))/(partial bold(X)_(k)^((j)))$(省略k,并且认为$bold(u)=bold(u)_1$),
+
+$bold(u)_(i,1)$仅与$bold(x)_(i,k)$有关.
+因此可以简化为
+$
+cal(J)_(i,1,j,1)=cases((partial bold(u)^((i)))/(partial bold(X)_(k)^((j)))\, quad i=j,0 \, quad i!=j)
+$
+$v=$torch.ones_like($U$) , $v in bb(R)^(N times 1)$,\
+则torch.autograd.grad(u,[x, y][i],grad_outputs=torch.ones_like(u)) 的计算过程为:
+$
+  bold(g)^((j)) = bold(v)^top dot cal(J)= sum_(i,1) bold(v)_(1)^((i)) dot cal(J)_(i,1,j,1) = sum_i 1 dot  cal(J)_(i,1,j,1) 
+  = (partial bold(u)^((j)))/(partial bold(X)_(k)^((j)))
+$ 
+其中$k=1,2, quad j = 1,2 dots N$.
+
+$text("完整写出后")
+bold(g)_k = vec((partial u(bold(X)^((1))))/(partial bold(X)_k^((1))),
+(partial u(bold(X)^((2))))/(partial bold(X)_k^((2))),
+dots.v,
+(partial u(bold(X)^((N))))/(partial bold(X)_k^((N))),
+)
+$
+
+$bold(g)_k in bb(R)^(N times 1)$ 对$bold(X)_k in bb(R)^(N times 1)$的雅可比矩阵为：
+$ cal(J)_(i,1,j,1)=cases((partial bold(g)_k^((i)))/(partial bold(X)_k^((j)))\, quad i=j , 
+0\, quad i!=j) 
+$
+
+则hess_ii的计算过程为:
+$
+  bold(h)_(k)^((j)) =bold(v)^top dot cal(J)= sum_(i) bold(v)^((i)) dot cal(J)_(i,1,j,1) = 1 dot cal(J)_(j,1,j,1) = (partial bold(g)_k)^((j))/(partial bold(X)_k^((j))) 
+$
+其中$k=1,2, quad j = 1,2 dots N$.
+#align(center)[
+$- Delta u = - sum_(k=1)^2 bold(h)_k$
+]
+#pagebreak()
+== 该方法的不足
+=== 依赖先验频谱信息
+尽管论文中几乎没有透露傅里叶特征采样的基础特征$omega_(text("base"))~cal(N)(0,sigma^(-2) bb(I))$中$sigma$的取值信息，实验中却发现这是最重要的参数，甚至比网络结构，是否加入交叉注意力还有重要。当采样频率不能覆盖目标函数的主要频率时，几乎无法收敛。
+=== Cross Attention使得计算量激增
+加入Cross Attention后，使用T4 GPU的训练时间增加了10倍以上，论文中使用RFF-CA和RFF-NN网络训练同样的epoch数量，这样比较是不公平的。
+=== 自适应性频率增强策略
+自适应性频率增强策略提取后验频率依赖对网络输出做DFT，这本身就依赖神经网络已经部分学到后验频率。其次该方法依赖人工区分哪些是已有频率，哪些是需要增强的频率，不够智能。
+
+在频谱增强任务中，离散傅里叶变换（DFT）的归一化功率谱可视为频率轴上的离散概率质量函数（PMF）。若直接对其实行高斯核密度估计（KDE）并采样，所得连续概率密度函数（PDF）可以作为后验概率的采样分布。
+#align(center)[#image("assets/kde.png",height:200pt,width: 500pt,fit:"stretch")]
+如果能够提出一种自适应排斥型平滑策略：在构建连续PDF时，将已有频率位置作为排斥中心，对标准KDE结果施加局部抑制，在已有频率邻域“凹陷”。使该PDF可直接用于重要性采样，引导新频率点自适应落入先验频谱未充分表征的区域。
+=== 双网络优化困难
+$alpha_text("opt")$为了最小化边界条件损失，倾向于让$alpha$趋近于0，使得$u_l$后续无法继续学习。复现时严格按照论文描述也设置无法避免，推测论文中可能在训练过程中对$alpha_text("opt")$的计算做了某些调整。
+
+尽管令$alpha$为可学习参数的方法在理论上也是最小化损失，却没有发生$alpha$趋近于0的情况，可能由于梯度下降是逐步到达极值点的，给$u_l$留下了足够的学习时间，而$alpha_text("opt")$在初期就过于频繁地调整了$alpha$的值，导致其过快地趋近于0。
