@@ -39,8 +39,7 @@ parfor j=1:N
     output(j,:,:) = temp_output;
     send(dq, 1);
 end
-close(h);delete(dq);
-save('Burger.mat', 'input', 'output', 'tspan', 'X')
+save('Burger.mat', 'input', 'output', 'tspan', 'X', 'x')
 
 function incrementCounter()
     persistent count;
